@@ -1,0 +1,13 @@
+# Python dependencies for the Kinase Structural Bioinformatic Pipeline
+
+# For parsing structure files (CIF/PDB) in extract_fasta.py
+biopython>=1.81
+
+# For reading and generating configuration files
+PyYAML>=6.0.1
+
+# For merging worker CSV outputs in the parallel orchestrator
+pandas>=2.0.0
+
+# (Note: numpy is used by the ChimeraX worker script, but ChimeraX 
+# bundles its own Python environment and numpy automatically.)
