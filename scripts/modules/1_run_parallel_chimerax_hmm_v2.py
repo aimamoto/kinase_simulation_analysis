@@ -15,7 +15,7 @@ import shutil  # <-- Added for robust cleanup
 import pandas as pd
 
 # --- CONFIGURATION ---
-WORKER_SCRIPT = os.path.join("modules", "chimerax_hmm_worker_v2upgrade.py")
+WORKER_SCRIPT = os.path.join("modules", "chimerax_hmm_worker_v2upgrade_rev1.py")
 FINAL_CSV_NAME = "hmm_aloop_analysis_results.csv"
 CHUNK_DIR = "temp_chimerax_chunks"
 
