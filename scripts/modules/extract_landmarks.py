@@ -8,13 +8,7 @@ This script:
   1. Detects (or accepts) a FASTA file
   2. Runs hmmalign using the user's Pkinase.hmm profile
   3. Parses the A2M alignment output
-  4. Extracts the canonical kinase landmarks:
-        - VAIK Lysine (K)
-        - αC Glu (E)
-        - R-spine residues (RS1, RS2)
-        - HRD His
-        - DFG Phe
-        - APE Glu
+  4. Extracts the canonical kinase landmarks + Hydrophobic Shell/Bridges
   5. Outputs: hmm_landmarks.json
 
 Usage:
@@ -43,14 +37,18 @@ TEMP_A2M = "_temp_aligned.a2m"
 
 # ================================================================
 #  CANONICAL KINASE LANDMARK POSITIONS (1-based HMM indexing)
-#  These match your original PFam PF00069 annotation logic
+#  Updated to include the Hydrophobic Shell and Bridging residues
 # ================================================================
 
 TARGET_NODES = {
     30:  "k",      # VAIK Lysine
     48:  "c",      # alphaC-helix Glutamate
-    52:  "rs1",    # R-spine 1
-    63:  "rs2",    # R-spine 2
+    52:  "rs1",    # R-spine 1 (PKA eq: L95)
+    61:  "v104",   # Shell / R-C spine bridge (PKA eq: V104)
+    63:  "rs2",    # R-spine 2 (PKA eq: L106)
+    75:  "m118",   # Shell (PKA eq: M118)
+    77:  "m120",   # Shell (PKA eq: M120)
+    113: "i150",   # Bridge to alphaE (PKA eq: I150)
     121: "hrd",    # HRD Histidine
     142: "f",      # DFG Phenylalanine
     167: "ape"     # APE Glutamate
@@ -65,19 +63,6 @@ def extract_nodes_from_aligned_seq(a2m_seq: str, fasta_name: str):
     """
     Given an aligned A2M sequence string and the FASTA header name,
     map the sequence positions to the canonical kinase landmark indices.
-
-    Rules:
-      - Uppercase letter => HMM assigned AA (advances both HMM index and seq index)
-      - Lowercase letter => insertions; belong to target sequence (advance seq index only)
-      - '-' => alignment gap; advances HMM index only
-
-    Returns:
-        mapping = {
-           'k': index_in_sequence_or_None,
-           'c': index_in_sequence_or_None,
-           ...
-           'type': protein_base_name (upper-case)
-        }
     """
 
     seq_index = 0  # position in actual protein sequence
@@ -143,13 +128,6 @@ def run_hmmalign(hmm_path: str, fasta_path: str) -> str:
 def parse_a2m(a2m_file: str) -> dict:
     """
     Parse the A2M alignment file produced by hmmalign.
-
-    Returns:
-       landmarks = {
-           fasta_header1: {k:..., c:..., rs1:..., ... 'type':...},
-           fasta_header2: {...},
-           ...
-       }
     """
     landmarks = {}
     current_name = None
@@ -180,11 +158,6 @@ def parse_a2m(a2m_file: str) -> dict:
 def find_fasta_file(user_specified: str = None) -> str:
     """
     Return the FASTA file path.
-
-    - If user supplied one: use it.
-    - Otherwise search current dir for *.fasta or *.fa
-    - If exactly one found, use it.
-    - If many found, ask user to choose.
     """
 
     if user_specified:
