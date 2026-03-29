@@ -5,9 +5,9 @@ This pipeline automates the extraction, sequence alignment, and structural analy
 ## Project Goal
 This pipeline is developed as a sister project of another pipeline specific for erbb family dimers (github.com/aimamoto/erbb_dimer_complex). While the sister project relies on the landmark residues in the ERBB family, this project aims to extend the analysis schemes to a broad range of tyrosine kinases using hmmer. So far, tested in the ERBB family members, SRC, CSK, and ABL.
 
-**Recent Upgrades (v3 & v4):** The pipeline now evaluates both the dynamic hydrophobic core and the $\alpha$C-$\beta$4 loop allosteric network. 
-* **Hydrophobic Core:** Tracks the cohesiveness of the Hydrophobic Shell and the integrity of critical Core Bridges (V104 to R-Spine, I150 to $\alpha$E helix).
-* **Allosteric Networks:** Quantifies the K105 toggle switch (sensing active vs. apo states), the $\alpha$E helix anchor (Y156-N99), and the rigid deep $\alpha$F-helix scaffold (D220).
+**Recent Upgrades (v3 & v4):** The pipeline now evaluates both the dynamic hydrophobic core and the <span class="math inline">&alpha;</span>C-<span class="math inline">&beta;</span>4 loop allosteric network. 
+* **Hydrophobic Core:** Tracks the cohesiveness of the Hydrophobic Shell and the integrity of critical Core Bridges (V104 to R-Spine, I150 to <span class="math inline">&alpha;</span>E helix).
+* **Allosteric Networks:** Quantifies the K105 toggle switch (sensing active vs. apo states), the <span class="math inline">&alpha;</span>E helix anchor (Y156-N99), and the rigid deep <span class="math inline">&alpha;</span>F-helix scaffold (D220).
 
 ## Getting Started
 
@@ -67,7 +67,7 @@ python3 run_kinase_pipeline_v4.py --use-fasta
 * `hmm_aloop_analysis_results.csv`: Comprehensive structural measurement dataset for all analyzed chains. Includes spatial/dihedral states, Spine/Shell integrity, and explicit distance metrics for allosteric nodes (`Y156_N99_Dist`, `K105_E107_Dist`, `D220_HRD_Dist`, etc.).
 * **Split Visualization Directories:**
   * `cx_viz_core/`: `.cxc` ChimeraX macros isolating the catalytic core, R/C-Spines, Salt Bridge, and Hydrophobic Shell.
-  * `cx_viz_allosteric/`: `.cxc` ChimeraX macros isolating the $\alpha$C-$\beta$4 toggle switch, $\alpha$E anchor, and $\alpha$F scaffold.
+  * `cx_viz_allosteric/`: `.cxc` ChimeraX macros isolating the <span class="math inline">&alpha;</span>C-<span class="math inline">&beta;</span>4 toggle switch, <span class="math inline">&alpha;</span>E anchor, and <span class="math inline">&alpha;</span>F scaffold.
 * `archives/`: Historical record of previous runs.
 
 ## Project Structure
@@ -103,4 +103,4 @@ To maintain a clean working environment, all core logic is isolated in the `modu
 1. **Kinase Classification:** Modi, V., & Dunbrack, R. L., Jr (2019). "Defining a new nomenclature for the structures of active and inactive kinases." *PNAS*, 116(14), 6818-6827.
 2. **Hydrophobic Core:** Kim, J. et al. (2017) "A dynamic hydrophobic core orchestrates allostery in protein kinases," *Science Advances*, 3(4). doi: 10.1126/sciadv.1600663.
 3. **DFG-in/out Conformational Coupling:** Levinson, N. M. et al. (2006). "A Src-like inactive conformation in the abl tyrosine kinase domain." *PLoS Biology*, 4(5), e144.
-4. **$\alpha$C-$\beta$4 Loop Allostery:** Wu, J., Jonniya, N. A., et al. (2024). "Role of the aC-b4 loop in protein kinase structure and dynamics." *eLife*. doi: 10.7554/eLife.91980
+4. **<span class="math inline">&alpha;</span>C-<span class="math inline">&beta;</span>4 Loop Allostery:** Wu, J., Jonniya, N. A., et al. (2024). "Role of the aC-b4 loop in protein kinase structure and dynamics." *eLife*. doi: 10.7554/eLife.91980
