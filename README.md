@@ -1,11 +1,13 @@
-# Kinase Structural Bioinformatic Pipeline (v4 upgrade)
+# Kinase Structural Bioinformatic Pipeline
 
 This pipeline automates the extraction, sequence alignment, and structural analysis of kinase protein simulations (AlphaFold3 or MD). It is optimized for batch processing large sets of simulations, such as combinatorial mutant matrices (e.g., 4x8 EGFR/ERBB variants) and single-protein runs (e.g., ABL1 wild-type).
 
 ## Project Goal
 This pipeline is developed as a sister project of another pipeline specific for erbb family dimers (github.com/aimamoto/erbb_dimer_complex). While the sister project relies on the landmark residues in the ERBB family, this project aims to extend the analysis schemes to a broad range of tyrosine kinases using hmmer. So far, tested in the ERBB family members, SRC, CSK, and ABL.
 
-**Version-4 Upgrade:** The pipeline now maps and evaluates the dynamic hydrophobic core to assess allosteric communication and structural commitment. It tracks the cohesiveness of the **Hydrophobic Shell** and the integrity of critical **Core Bridges** (the V104-equivalent bridge to the R-Spine and the I150-equivalent bridge to the $\alpha$E helix; the landmark coordinates used are based on PKA as described in the 2017 *Science Adv* paper).
+**Recent Upgrades (v3 & v4):** The pipeline now evaluates both the dynamic hydrophobic core and the $\alpha$C-$\beta$4 loop allosteric network. 
+* **Hydrophobic Core:** Tracks the cohesiveness of the Hydrophobic Shell and the integrity of critical Core Bridges (V104 to R-Spine, I150 to $\alpha$E helix).
+* **Allosteric Networks:** Quantifies the K105 toggle switch (sensing active vs. apo states), the $\alpha$E helix anchor (Y156-N99), and the rigid deep $\alpha$F-helix scaffold (D220).
 
 ## Getting Started
 
@@ -29,7 +31,7 @@ pip install -r requirements.txt
 #### Stage A: Discovery & Audit
 Scan your current directory for simulation folders:
 ```bash
-python3 run_kinase_pipeline_v3.py
+python3 run_kinase_pipeline_v4.py
 ```
 * The script safely ignores non-simulation folders (like `modules/` or `archives/`).
 * It strictly reads your folder names (e.g., `a-erbb2cattail_b-egfrcattail-t790m`) and generates a `generated_matrix.csv` manifest.
@@ -38,32 +40,34 @@ python3 run_kinase_pipeline_v3.py
 #### Stage B: Analysis & Visualization
 Resume the pipeline after verification:
 ```bash
-python3 run_kinase_pipeline_v3.py --resume
+python3 run_kinase_pipeline_v4.py --resume
 ```
 The pipeline automatically handles:
 1. **Archiving**: Moves any previous results to a timestamped folder in `archives/` to prevent data mixing (safely bypasses active input files).
 2. **Setup**: Generates `proteins.yaml` and strictly extracts `sequences.fasta` without forcefully altering your folder names.
-3. **Mapping**: Aligns sequences against the HMM profile to generate `hmm_landmarks.json` (extracting canonical motifs, the hydrophobic shell, and core bridges).
-4. **Execution**: Spawns parallel ChimeraX workers for high-throughput structural analysis of salt bridges, R- and C-spines, A-loop dynamics, shell packing, and ATP/Mg2+ coordination.
+3. **Mapping**: Aligns sequences against the HMM profile to generate `hmm_landmarks.json` (extracting canonical motifs, shell residues, and allosteric loop anchors).
+4. **Execution**: Spawns parallel ChimeraX workers for high-throughput structural analysis, dynamically generating split visualization macros.
 
 ### 4. Advanced: Custom Entry Points
 If you already have a curated configuration or sequence file, you can bypass the discovery stages. The pipeline will automatically protect your provided files from being archived.
 
 * **Start from YAML (--use-yaml)**:
 ```bash
-python3 run_kinase_pipeline_v3.py --use-yaml
+python3 run_kinase_pipeline_v4.py --use-yaml
 ```
 *(Skips directory scanning; uses your existing proteins.yaml to extract FASTA sequences, then proceeds to analysis.)*
 
 * **Start from FASTA (--use-fasta)**:
 ```bash
-python3 run_kinase_pipeline_v3.py --use-fasta
+python3 run_kinase_pipeline_v4.py --use-fasta
 ```
 *(Skips scanning and extraction entirely; uses your existing sequences.fasta for HMM alignment and ChimeraX structural analysis.)*
 
 ## Outputs
-* `hmm_aloop_analysis_results.csv`: Comprehensive structural measurement dataset for all analyzed chains, now including `Shell_State` (Packed vs. Loose) and bridge distance metrics (`V104_RS2_Dist`, `I150_HRD_Dist`).
-* `cx_pocket_visualization_hmm/`: `.cxc` ChimeraX macros for 3D visualization of each simulation. The macros automatically render and color-code the catalytic machinery, R-Spine (purple), Hydrophobic Shell/V104 (teal), and I150 $\alpha$E bridge (tan).
+* `hmm_aloop_analysis_results.csv`: Comprehensive structural measurement dataset for all analyzed chains. Includes spatial/dihedral states, Spine/Shell integrity, and explicit distance metrics for allosteric nodes (`Y156_N99_Dist`, `K105_E107_Dist`, `D220_HRD_Dist`, etc.).
+* **Split Visualization Directories:**
+  * `cx_viz_core/`: `.cxc` ChimeraX macros isolating the catalytic core, R/C-Spines, Salt Bridge, and Hydrophobic Shell.
+  * `cx_viz_allosteric/`: `.cxc` ChimeraX macros isolating the $\alpha$C-$\beta$4 toggle switch, $\alpha$E anchor, and $\alpha$F scaffold.
 * `archives/`: Historical record of previous runs.
 
 ## Project Structure
@@ -71,14 +75,14 @@ To maintain a clean working environment, all core logic is isolated in the `modu
 
 ```text
 . (Working Directory)
-├── run_kinase_pipeline_v3.py        # The main entry point orchestrator
+├── run_kinase_pipeline_v4.py        # The main entry point orchestrator
 ├── requirements.txt                 # Python package dependencies
 ├── modules/                         # Core logic directory
 │   ├── generate_config.py
 │   ├── extract_fasta.py
 │   ├── extract_landmarks.py
-│   ├── 1_run_parallel_chimerax_hmm_v3.py
-│   └── chimerax_hmm_worker_v3.py  # Calculates spatial states and core bridges
+│   ├── 1_run_parallel_chimerax_hmm_v4.py
+│   └── chimerax_hmm_worker_v4.py    # Calculates core domains and allosteric networks
 ├── a-erbb2cattail_b-egfrcattail.../ # Your input simulation directories (.cif/.pdb)
 ├── abl1-wtcat_py161_apo/            # Your input simulation directories (.cif/.pdb)
 │
@@ -88,14 +92,15 @@ To maintain a clean working environment, all core logic is isolated in the `modu
 ├── generated_matrix.csv             # Matrix manifest of discovered simulations
 ├── proteins.yaml                    # Strict naming configuration map
 ├── sequences.fasta                  # Extracted sequence FASTA
-├── hmm_landmarks.json               # HMM mapped canonical and shell residues
+├── hmm_landmarks.json               # HMM mapped canonical and allosteric residues
 ├── hmm_aloop_analysis_results.csv   # Final structural measurements dataset
-└── cx_pocket_visualization_hmm/     # 3D visualization macros (.cxc)
+├── cx_viz_core/                     # 3D visualization macros for the catalytic core (.cxc)
+└── cx_viz_allosteric/               # 3D visualization macros for the allosteric network (.cxc)
 ```
 ---
 
 ## References
 1. **Kinase Classification:** Modi, V., & Dunbrack, R. L., Jr (2019). "Defining a new nomenclature for the structures of active and inactive kinases." *PNAS*, 116(14), 6818-6827.
-2. **Hydrophobic Core:** Kim, J. et al. (2017) “A dynamic hydrophobic core orchestrates allostery in protein kinases,” *Science Advances*, 3(4). doi: 10.1126/sciadv.1600663.
-3. **DFG-in/out Conformational Coupling:** Levinson, N. M., & Boxer, S. G. (2014). "A conserved water-mediated hydrogen bond network defines the activation mechanism of the Src family of kinases." *Nature Chemical Biology*, 10(2), 127-132.
-4. **Hydrophobic Spines:** Taylor, S. S., & Kornev, A. P. (2011). "Protein kinases: evolution of dynamic regulatory proteins." *Trends in Biochemical Sciences*, 36(2), 65-77.
+2. **Hydrophobic Core:** Kim, J. et al. (2017) "A dynamic hydrophobic core orchestrates allostery in protein kinases," *Science Advances*, 3(4). doi: 10.1126/sciadv.1600663.
+3. **DFG-in/out Conformational Coupling:** Levinson, N. M. et al. (2006). "A Src-like inactive conformation in the abl tyrosine kinase domain." *PLoS Biology*, 4(5), e144.
+4. **$\alpha$C-$\beta$4 Loop Allostery:** Wu, J., Jonniya, N. A., et al. (2024). "Role of the aC-b4 loop in protein kinase structure and dynamics." *eLife*. doi: 10.7554/eLife.91980
