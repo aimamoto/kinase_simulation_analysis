@@ -5,7 +5,7 @@ This pipeline automates the extraction, sequence alignment, and structural analy
 ## Project Goal
 This pipeline is developed as a sister project of another pipeline specific for erbb family dimers (github.com/aimamoto/erbb_dimer_complex). While the sister project relies on the landmark residues in the ERBB family, this project aims to extend the analysis schemes to a broad range of tyrosine kinases using hmmer. So far, tested in the ERBB family members, SRC, CSK, and ABL.
 
-**New: Version-3 Upgrade:** The pipeline now maps and evaluates the dynamic hydrophobic core to assess allosteric communication and structural commitment. It tracks the cohesiveness of the **Hydrophobic Shell** and the integrity of critical **Core Bridges** (the V104-equivalent bridge to the R-Spine and the I150-equivalent bridge to the $\alpha$E helix; the landmark coordinates used are based on PKA as described in the 2017 *Science Adv* paper).
+**Version-4 Upgrade:** The pipeline now maps and evaluates the dynamic hydrophobic core to assess allosteric communication and structural commitment. It tracks the cohesiveness of the **Hydrophobic Shell** and the integrity of critical **Core Bridges** (the V104-equivalent bridge to the R-Spine and the I150-equivalent bridge to the $\alpha$E helix; the landmark coordinates used are based on PKA as described in the 2017 *Science Adv* paper).
 
 ## Getting Started
 
