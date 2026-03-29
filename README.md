@@ -1,4 +1,4 @@
-# Kinase Structural Bioinformatic Pipeline (v3 upgrade)
+# Kinase Structural Bioinformatic Pipeline (v4 upgrade)
 
 This pipeline automates the extraction, sequence alignment, and structural analysis of kinase protein simulations (AlphaFold3 or MD). It is optimized for batch processing large sets of simulations, such as combinatorial mutant matrices (e.g., 4x8 EGFR/ERBB variants) and single-protein runs (e.g., ABL1 wild-type).
 
