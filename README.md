@@ -3,7 +3,7 @@
 This pipeline automates the extraction, sequence alignment, and structural analysis of kinase protein simulations (AlphaFold3 or MD). It is optimized for batch processing large sets of simulations, such as combinatorial mutant matrices (e.g., 4x8 EGFR/ERBB variants) and single-protein runs (e.g., ABL1 wild-type).
 
 ## Project Goal
-This pipeline is developed as a sister project of another pipeline specific for erbb family dimers (github.com/aimamoto/erbb_dimer_complex). While the sister project relies on the landmark residues in the ERBB family, this project aims to extend the analysis schemes to a broad range of tyrosine kinases using hmmer. So far, tested in the ERBB family members, SRC, CSK, and ABL.
+This pipeline is developed as a sister project of another pipeline specific for erbb family dimers (github.com/aimamoto/erbb_dimer_complex). While the sister project relies on the landmark residues in the ERBB family, this project aims to extend the analysis schemes to a broad range of kinases (TKs and STKs) using hmmer. So far, tested in the ERBB family members, SRC, CSK, ABL, JAK2, FAK, and PKA).
 
 **Recent Upgrades (v3 & v4):** The pipeline now evaluates both the dynamic hydrophobic core and the <span class="math inline">&alpha;</span>C-<span class="math inline">&beta;</span>4 loop allosteric network. 
 * **Hydrophobic Core:** Tracks the cohesiveness of the Hydrophobic Shell and the integrity of critical Core Bridges (V104 to R-Spine, I150 to <span class="math inline">&alpha;</span>E helix).
