@@ -1,9 +1,9 @@
-# Kinase Structural Bioinformatic Pipeline
+# KINOME Structural Bioinformatic Pipeline
 
 This pipeline automates the extraction, sequence alignment, and structural analysis of kinase protein simulations (AlphaFold3 or MD). It is optimized for batch processing large sets of simulations, such as combinatorial mutant matrices (e.g., 4x8 EGFR/ERBB variants) and single-protein runs (e.g., ABL1 wild-type).
 
 ## Project Goal
-This pipeline is developed as a sister project of another pipeline specific for erbb family dimers (github.com/aimamoto/erbb_dimer_complex). While the sister project relies on the landmark residues in the ERBB family, this project aims to extend the analysis schemes to a broad range of tyrosine kinases using hmmer. So far, tested in the ERBB family members, SRC, CSK, ABL, FAK, JAK2, and PKA catalytic subunit.
+This pipeline is developed as a sister project of another pipeline specific for erbb family dimers (github.com/aimamoto/erbb_dimer_complex). While the sister project relies on the landmark residues in the ERBB family, this project aims to extend the analysis schemes to a broad range of KINOME-wide kinases using hmmer. So far, tested in the ERBB family members, SRC, CSK, ABL, FAK, JAK2, and PKA catalytic subunit.
 
 **Recent Upgrades (v4r1):** 
 1. **Advanced Structural Metrics:** The pipeline now evaluates both the dynamic hydrophobic core and the <span class="math inline">&alpha;</span>C-<span class="math inline">&beta;</span>4 loop allosteric network. 
