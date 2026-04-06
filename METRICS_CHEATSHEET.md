@@ -1,6 +1,7 @@
+[METRICS_CHEATSHEET.md](https://github.com/user-attachments/files/26516007/METRICS_CHEATSHEET.md)
 # Kinase Structural Metrics Cheat Sheet
 
-This guide maps the raw measurements in `hmm_kinase_analysis_results_v4r1.csv` to their biological meaning, their visual representation in the R statistics pipeline (in the folder *analyzeR/*), and where to find them in your 3D ChimeraX sessions.
+This guide maps the raw measurements in `hmm_kinase_analysis_results_v4r1.csv` to their biological meaning, their visual representation in the R statistics pipeline (in the folder *analyzeR/*), and where to find them in your 3D ChimeraX sessions. 
 
 ## 1. The Catalytic Core & Hydrophobic Shell
 **3D Visual Location:** `cx_viz_core/` macros.  
@@ -40,8 +41,9 @@ These networks sense external signals (ligand binding, mutations) and transmit t
   * **Plot Reference:** Phase 4 (Violin Plots).
   * **Citation:** (Wu, 2024) [3].
 * **`D220_HRD_Dist` (The αF Scaffold)**
-  * **Biology:** Distance from the deep αF helix (D220) to the catalytic loop (HRD). The αF helix is the ultimate rigid backbone of the kinase.
+  * **Biology:** Distance from the highly conserved Aspartate on the deep αF helix (D220) to the backbone of the catalytic loop (HRD). The αF helix acts as the ultimate rigid "hub" of the kinase, anchoring the catalytic loop in place for structural stability.
   * **Plot Reference:** Phase 4 (Violin Plots).
+  * **Citation:** (Kornev et al., 2008; Taylor & Kornev, 2011)[4, 5].
 
 ## 3. DFG Conformation & Phase Space
 **3D Visual Location:** Present in both Core and Allosteric macros (focus on the Activation Loop).  
@@ -50,11 +52,11 @@ These metrics strictly define the spatial positioning and backbone torsion of th
 * **`D1_Dist` & `D2_Dist` (Dunbrack Spatial Coordinates)**
   * **Biology:** `D1` (DFG-Asp to αC-Glu) separates DFG-*in* (short) from DFG-*out* (long). `D2` (DFG-Asp to HRD-His/Tyr) separates active states from intermediates.
   * **Plot Reference:** Phase 3 (2D Phase Space, lower panels).
-  * **Citation:** (Modi, 2019)[4].
+  * **Citation:** (Modi, 2019) [6].
 * **`Phi_D` & `Psi_D` (DFG Dihedrals)**
   * **Biology:** The Ramachandran backbone torsion angles of the DFG-Aspartate. Maps the exact rotation the backbone undergoes when transitioning between states.
   * **Plot Reference:** Phase 3 (2D Phase Space, upper panels).
-  * **Citation:** (Modi, 2019) [4].
+  * **Citation:** (Modi, 2019) [6].
 
 ## 4. Categorical Macro-States
 **3D Visual Location:** Global structure visualization.  
@@ -63,11 +65,11 @@ These are discrete, rule-based classifications derived from the continuous metri
 * **`State` (Global Conformation)**
   * **Biology:** Classifies the overall architecture (e.g., "Active (BLAminus)", "Inactive (BLAplus)", "DFGout").
   * **Plot Reference:** Phase 2 (Macro-State Bar Charts).
-  * **Citation:** (Modi, 2019 [4]; Levinson, 2006[5]).
+  * **Citation:** (Modi, 2019 [6]; Levinson, 2006 [7]).
 * **`C_Helix` (In vs Out)**
   * **Biology:** Classified strictly based on the integrity of the `SB_Dist` (Salt Bridge).
   * **Plot Reference:** Phase 2 (Macro-State Bar Charts).
-  * **Citation:** (Huse & Kuriyan, 2002) [1].
+  * **Citation:** (Huse & Kuriyan, 2002)[1].
 * **`R_Spine` (Intact vs Broken)**
   * **Biology:** Evaluates if the Regulatory Spine residues are stacked contiguously.
   * **Plot Reference:** Phase 2 (Macro-State Bar Charts).
@@ -75,7 +77,7 @@ These are discrete, rule-based classifications derived from the continuous metri
 * **`Spatial` (DFGin vs DFGout)**
   * **Biology:** Classified strictly based on `D1_Dist` and `D2_Dist` boundaries.
   * **Plot Reference:** Phase 2 (Macro-State Bar Charts).
-  * **Citation:** (Modi, 2019) [4].
+  * **Citation:** (Modi, 2019) [6].
 
 ---
 
@@ -84,5 +86,7 @@ These are discrete, rule-based classifications derived from the continuous metri
 1. **Huse, M., & Kuriyan, J. (2002).** "The conformational plasticity of protein kinases." *Cell*, 109(3), 275-282. 
 2. **Kim, J. et al. (2017).** "A dynamic hydrophobic core orchestrates allostery in protein kinases." *Science Advances*, 3(4), e1600663. 
 3. **Wu, J., Jonniya, N. A., et al. (2024).** "Role of the aC-b4 loop in protein kinase structure and dynamics." *eLife*, 13, e91980.
-4. **Modi, V., & Dunbrack, R. L., Jr. (2019).** "Defining a new nomenclature for the structures of active and inactive kinases." *PNAS*, 116(14), 6818-6827.
-5. **Levinson, N. M. et al. (2006).** "A Src-like inactive conformation in the abl tyrosine kinase domain." *PLoS Biology*, 4(5), e144.
+4. **Kornev, A. P., Taylor, S. S., & Ten Eyck, L. F. (2008).** "A helix scaffold for the assembly of active protein kinases." *PNAS*, 105(38), 14377-14382.
+5. **Taylor, S. S., & Kornev, A. P. (2011).** "Protein kinases: evolution of dynamic regulatory proteins." *Trends in Biochemical Sciences*, 36(2), 65-77.
+6. **Modi, V., & Dunbrack, R. L., Jr. (2019).** "Defining a new nomenclature for the structures of active and inactive kinases." *PNAS*, 116(14), 6818-6827.
+7. **Levinson, N. M. et al. (2006).** "A Src-like inactive conformation in the abl tyrosine kinase domain." *PLoS Biology*, 4(5), e144.
