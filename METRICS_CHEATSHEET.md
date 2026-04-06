@@ -1,0 +1,77 @@
+# Kinase Structural Metrics Cheat Sheet
+
+This guide maps the raw measurements in `hmm_kinase_analysis_results_v4r1.csv` to their biological meaning, their visual representation in the R statistics pipeline, and where to find them in your 3D ChimeraX sessions. Structural analysis (plots and statistical tests) is carried out by R scripts in the folder 'analyzeR'.
+
+## 1. The Catalytic Core & Hydrophobic Shell
+**3D Visual Location:** `cx_viz_core/` macros.  
+These metrics define the fundamental "engine" of the kinase, focusing on the hydrophobic architecture that dynamically compresses to link the N-lobe and C-lobe during activation *(Kim, 2017)*.
+
+* **`SB_Dist` (The Salt Bridge)**
+  * **Biology:** Distance between the β3-Lysine (VAIK) and the αC-Glutamate. Short distances (< 4.0 Å) indicate the αC-helix is swung "In", bridging ATP to the catalytic machinery. 
+  * **Plot Reference:** Phase 4 (Violin Plots), Phase 5 (PCA/Heatmaps).
+  * **Citation:** (Kim, 2017).
+* **`V104_RS2_Dist` (Core Compression)**
+  * **Biology:** Distance between the deep Hydrophobic Shell (V104) and the Regulatory Spine (RS2). Measures the "tightness" of the core. In active kinases, the shell compresses tightly against the R-spine.
+  * **Plot Reference:** Phase 4 (Violin Plots).
+  * **Citation:** (Kim, 2017).
+* **`Shell_M118_M120_Dist` (Hinge Breathing)**
+  * **Biology:** Measures the local flexibility/compaction of the hinge region connecting the two lobes.
+  * **Plot Reference:** Phase 4 (Violin Plots).
+  * **Citation:** (Kim, 2017).
+* **`I150_HRD_Dist` (Base Rigidity)**
+  * **Biology:** Distance between the αE helix (I150) and the catalytic HRD motif. The αE helix acts as the stable "floor" of the kinase. This ensures the catalytic loop is firmly mounted to the floor.
+  * **Plot Reference:** Phase 4 (Violin Plots).
+  * **Citation:** (Kim, 2017).
+
+## 2. The Allosteric Network & Regulatory Dials
+**3D Visual Location:** `cx_viz_allosteric/` macros.  
+These networks sense external signals (ligand binding, mutations) and transmit them to the catalytic core via the highly dynamic αC-β4 loop *(Wu, 2024)*.
+
+* **`K105_E107_Dist` & `K105_E121_Dist` (The Toggle Switch)**
+  * **Biology:** K105 sits on the flexible αC-β4 loop and acts as a mechanical switch. When active, it flips inward to pair with E107. When inactive, it flips outward to pair with E121 or face the solvent.
+  * **Plot Reference:** Phase 4 (Violin Plots).
+  * **Citation:** (Wu, 2024).
+* **`K105_N99_Dist` (Loop Cohesiveness)**
+  * **Biology:** Distance between the K105 switch and the top of the αC-β4 loop (N99). Defines how tightly folded the regulatory loop is.
+  * **Plot Reference:** Phase 4 (Violin Plots), Phase 5 (Heatmaps).
+  * **Citation:** (Wu, 2024).
+* **`Y156_N99_Dist` (The αE Anchor)**
+  * **Biology:** A massive cross-lobe bridge. It anchors the flexible regulatory loop of the N-lobe (N99) down to the rigid C-lobe (Y156). Breaking this distance functionally decouples the two halves of the kinase.
+  * **Plot Reference:** Phase 4 (Violin Plots).
+  * **Citation:** (Wu, 2024).
+* **`D220_HRD_Dist` (The αF Scaffold)**
+  * **Biology:** Distance from the deep αF helix (D220) to the catalytic loop (HRD). The αF helix is the ultimate rigid backbone of the kinase.
+  * **Plot Reference:** Phase 4 (Violin Plots).
+
+## 3. DFG Conformation & Phase Space
+**3D Visual Location:** Present in both Core and Allosteric macros (focus on the Activation Loop).  
+These metrics strictly define the spatial positioning and backbone torsion of the DFG Motif (Asp-Phe-Gly), dictating ATP-Mg2+ coordination *(Modi, 2019; Levinson, 2006)*.
+
+* **`D1_Dist` & `D2_Dist` (Dunbrack Spatial Coordinates)**
+  * **Biology:** `D1` (DFG-Asp to αC-Glu) separates DFG-*in* (short) from DFG-*out* (long). `D2` (DFG-Asp to HRD-His/Tyr) separates active states from intermediates.
+  * **Plot Reference:** Phase 3 (2D Phase Space, lower panels).
+  * **Citation:** (Modi, 2019).
+* **`Phi_D` & `Psi_D` (DFG Dihedrals)**
+  * **Biology:** The Ramachandran backbone torsion angles of the DFG-Aspartate. Maps the exact rotation the backbone undergoes when transitioning between states.
+  * **Plot Reference:** Phase 3 (2D Phase Space, upper panels).
+  * **Citation:** (Modi, 2019).
+
+## 4. Categorical Macro-States
+**3D Visual Location:** Global structure visualization.  
+These are discrete, rule-based classifications derived from the continuous metrics above, providing a shorthand for the global state of the kinase *(Modi, 2019)*.
+
+* **`State` (Global Conformation)**
+  * **Biology:** Classifies the overall architecture (e.g., "Active (BLAminus)", "Inactive (BLAplus)", "DFGout").
+  * **Plot Reference:** Phase 2 (Macro-State Bar Charts).
+  * **Citation:** (Modi, 2019; Levinson, 2006).
+* **`C_Helix` (In vs Out)**
+  * **Biology:** Classified strictly based on the integrity of the `SB_Dist` (Salt Bridge).
+  * **Plot Reference:** Phase 2 (Macro-State Bar Charts).
+* **`R_Spine` (Intact vs Broken)**
+  * **Biology:** Evaluates if the Regulatory Spine residues are stacked contiguously.
+  * **Plot Reference:** Phase 2 (Macro-State Bar Charts).
+  * **Citation:** (Kim, 2017).
+* **`Spatial` (DFGin vs DFGout)**
+  * **Biology:** Classified strictly based on `D1_Dist` and `D2_Dist` boundaries.
+  * **Plot Reference:** Phase 2 (Macro-State Bar Charts).
+  * **Citation:** (Modi, 2019).
