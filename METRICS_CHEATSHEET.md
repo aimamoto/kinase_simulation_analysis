@@ -79,6 +79,12 @@ These are discrete, rule-based classifications derived from the continuous metri
   * **Plot Reference:** Phase 2 (Macro-State Bar Charts).
   * **Citation:** (Modi, 2019) [6].
 
+## 🛑 Important Disclaimer: CSV vs. 3D Visuals
+If you compare the distances in the `hmm_kinase_analysis_results.csv` to the dashed lines drawn in the ChimeraX `.cxc` 3D visuals, you will notice different values. **This is intentional.**
+
+1. **The CSV (Quantitative Data):** Calculates the **minimum heavy-atom sidechain distance** (e.g., Nitrogen to Oxygen). This represents the true stereochemical contact/bond distance used for all rigorous statistical plots.
+2. **The 3D Visuals (Qualitative Guide):** For structural features spanning large distances (Allosteric networks, R-Spine, Hydrophobic Shell), the macros draw lines between **Alpha-Carbons (Cα)**. This is a standard visualization technique used to track macroscopic backbone shifts without drawing messy lines that clip through the protein ribbons. (Note: Precise catalytic interactions, such as ATP-Mg2+ coordination, are still shown via precise heavy-atom distances in the 3D view).
+
 ---
 
 ## References
