@@ -13,7 +13,8 @@ This pipeline is developed as a sister project of another pipeline specific for 
    * *Allosteric Networks:* Quantifies the K105 toggle switch (sensing active vs. apo states), the αE helix anchor (Y156-N99), and the rigid deep αF-helix scaffold (D220).
 2. **Visual Alignments (1D):** Automatically generates publication-ready Multiple Sequence Alignment (MSA) text panels and abstract 1D topological schematics mapping structural motifs perfectly to sequence coordinates.
 
-**Recent Upgrades (v6):** 1. **Parallel Execution Engine:** Massive speed improvements for high-throughput batch runs. Both sequence extraction (`extract_fasta.py`) and ChimeraX structural analysis now utilize an orchestrator/worker multiprocessing architecture. You can control this via the `-c` or `--cores` flag.
+**Recent Upgrades (v6):** 
+1. **Parallel Execution Engine:** Massive speed improvements for high-throughput batch runs. Both sequence extraction (`extract_fasta.py`) and ChimeraX structural analysis now utilize an orchestrator/worker multiprocessing architecture. You can control this via the `-c` or `--cores` flag.
 2. **AlphaFold 3 Smart Filtering:** The pipeline now automatically detects AF3 nested seeds (e.g., `seed-m_sample-n/model.cif`) and safely excludes redundant top-level `*_model.cif` summary files, preventing duplicate processing and skewed datasets.
 3. **Expanded Catalytic & Ligand Tracking:** Explicit distance tracking for ATP and Magnesium coordination. The pipeline now calculates critical distances for HRD-Asp to ATP, DFG-Asp to Mg/ATP, and P-Loop to ATP, alongside the existing hydrophobic core and αC-β4 loop metrics.
 4. **Universal Header Normalization:** Improved regex parsing ensures bullet-proof mapping between highly variable 3D CIF folder paths and 1D FASTA sequence headers.
