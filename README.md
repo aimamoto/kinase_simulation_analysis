@@ -78,7 +78,7 @@ python3 run_kinase_pipeline_v6.py --use-fasta -c 8
 * **`debug_landmarks.py`**: If alignment visual markers or structural distance calculations look incorrect, you can run `python3 modules/debug_landmarks.py sequences.fasta` to print a terminal table verifying the exact amino acid letters matching your extracted HMM coordinate indices.
 
 ## Outputs
-* `hmm_kinase_analysis_results_v6.csv`: Comprehensive structural measurement dataset for all analyzed chains. Includes spatial/dihedral states, Spine/Shell integrity, Allosteric nodes (`Y156_N99_Dist`, `K105_E107_Dist`, etc.), and Ligand metrics (`HRD_ATP_Dist`, `DFG_Mg_Dist`, `PLoop_ATP_Dist`). This file will be the source data for the *analyzeR* pipeline (find the pipeline scripts and README files there for details).
+* `hmm_kinase_analysis_results_v6.csv`: Comprehensive structural measurement dataset for all analyzed chains. Includes spatial/dihedral states, Spine/Shell integrity, Allosteric nodes (`Y156_N99_Dist`, `K105_E107_Dist`, etc.), and Ligand metrics (`HRD_ATP_Dist`, `DFG_Mg_Dist`, `PLoop_ATP_Dist`). This file contains the source data for the *analyzeR* pipeline (find the pipeline scripts and README files there for details).
 * `MSA_Annotated_Panel.pdf`: Wrapped, monospaced sequence alignment visually mapped to canonical landmarks and structural topology tracks.
 * `[sequence_name]_schematic.pdf`: Individual 1D abstract topologies showing N/C-lobes, helices, sheets, and catalytic loop positioning.
 * **Visualization Directories:**
