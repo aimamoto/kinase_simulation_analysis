@@ -19,13 +19,14 @@ def clean_protein_name(raw_name):
     """Universally cleans structural states, PTMs, and construct tags, preserving mutations."""
     name = re.sub(r'^\d+[_\-|]', '', raw_name)
     
-    # 1. Broaden to catch apo, holo, 0atp, 1atp, gtp, etc., ANYWHERE in the string (removed the '$')
+    # 1. Broaden to catch apo, holo, 0atp, 1atp, gtp, etc., ANYWHERE in the string
     name = re.sub(r'[-_](apo|holo|\d*atp|\d*adp|\d*amp|\d*gtp|\d*gdp|\d*anp)\b', '', name, flags=re.IGNORECASE)
     
-    # 2. Remove construct tags (wt, cattail, cat)
-    name = re.sub(r'(wt|cattail|cat|tail)', '', name, flags=re.IGNORECASE)
+    # 2. Smartly remove construct tags (wt, cattail, cat, tail) ONLY at the end of a block/word
+    # This matches the pristine regex used in the R Engine.
+    name = re.sub(r'(?i)(cattail|cat|tail|wt)(?=_|-|$)', '', name)
     
-    # 3. Broaden to catch all phosphorylation types (pY159, pS494, pT491) ANYWHERE in the string
+    # 3. Catch all phosphorylation types (pY159, pS494, pT491) ANYWHERE in the string
     name = re.sub(r'[-_]p[sty]?\d+\b', '', name, flags=re.IGNORECASE)
     
     # 4. Clean up dangling dashes
@@ -35,22 +36,39 @@ def clean_protein_name(raw_name):
 
 def scan_directories():
     combos, singles = set(), set()
-    IGNORE_DIRS = {'modules', 'archives', 'temp_chimerax_chunks', 'old'}
+    IGNORE_DIRS = {'modules', 'archives', 'temp_chimerax_chunks', 'old', 'cx_viz_core', 'cx_viz_allosteric'}
 
-    for d in os.listdir("."):
-        if not os.path.isdir(d) or d.startswith('.') or d in IGNORE_DIRS: continue
-        has_structure = any(f.lower().endswith(('.cif', '.pdb')) for root, dirs, files in os.walk(d) for f in files)
-        if not has_structure: continue
+    print("[*] Scanning directories recursively (Massive Mode Enabled)...")
+    for root, dirs, files in os.walk("."):
+        # Filter ignored directories in-place to speed up the recursive walk
+        dirs[:] = [d for d in dirs if not d.startswith('.') and d not in IGNORE_DIRS and not d.startswith('plots_and_stats')]
+
+        # Check if this specific folder contains structure files
+        has_structure = any(f.lower().endswith(('.cif', '.pdb')) for f in files)
+        if not has_structure:
+            continue
             
-        multi_match = re.search(r"a-([^_]+)_b-([^_]+)", d, re.IGNORECASE)
+        # Regex search the entire path for the interaction pattern
+        # e.g., ./egfr-egfr/a-egfrcat_b-egfrcat_1atp/model.cif
+        multi_match = re.search(r"a-([^_/\\]+)_b-([^_/\\]+)", root, re.IGNORECASE)
+        
         if multi_match:
             combos.add((multi_match.group(1), multi_match.group(2)))
             continue
         
-        parts = d.split("_")
-        if parts: singles.add(parts[0])
-    
-    if not combos and not singles: return None, None, None
+        # Logic for single structure fallback
+        path_parts = root.replace('\\', '/').split('/')
+        base_name = path_parts[-1]
+        
+        # If we are deep inside a seed or model folder, step up to the descriptive name
+        if re.search(r'(seed|model|fold|sample|unrelaxed|relaxed)', base_name, re.IGNORECASE) and len(path_parts) > 1:
+            base_name = path_parts[-2]
+        
+        singles.add(base_name.split('_')[0])
+
+    if not combos and not singles: 
+        return None, None, None
+        
     chain_a = sorted(list(set(c[0] for c in combos)))
     chain_b = sorted(list(set(c[1] for c in combos)))
     
@@ -76,7 +94,7 @@ def load_matrix_and_make_yaml(csv_path):
     with open(csv_path, 'r') as f:
         reader = csv.reader(f)
         current_section = None
-        chain_b_vars = []
+        chain_b_vars =[]
         for row in reader:
             if not row or not row[0]: continue
             if "# MULTIMER" in row[0]:

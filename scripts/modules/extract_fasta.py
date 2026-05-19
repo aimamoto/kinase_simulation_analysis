@@ -22,10 +22,8 @@ AA_MAP = {
 
 def clean_protein_name(raw_name):
     name = re.sub(r'^\d+[_\-|]', '', raw_name)
-    # Broaden to catch 0atp, 1atp, 2atp, etc.
     name = re.sub(r'[-_](apo|holo|\d*atp|\d*adp|\d*amp|\d*gtp|\d*gdp|\d*anp)$', '', name, flags=re.IGNORECASE)
     name = re.sub(r'(wt|cattail|cat|tail)', '', name, flags=re.IGNORECASE)
-    # Broaden to catch pY, pS, pT, and generic p (e.g., ps494, pt491)
     name = re.sub(r'[-_]p[sty]?\d+', '', name, flags=re.IGNORECASE) 
     name = re.sub(r'[-_]+', '-', name).strip('-')
     return name if name else raw_name
@@ -45,24 +43,25 @@ def extract_sequences(filepath):
 def get_protein_names(filepath, yaml_data=None):
     folder = os.path.dirname(os.path.abspath(filepath))
     basename = os.path.basename(folder)
-    if re.search(r"seed[-_]\d+[-_]sample", basename, re.IGNORECASE): basename = os.path.basename(os.path.dirname(folder))
+    if re.search(r"seed[-_]\d+[-_]sample", basename, re.IGNORECASE): 
+        basename = os.path.basename(os.path.dirname(folder))
     
     if yaml_data and "pattern_matches" in yaml_data:
         for pattern in sorted(yaml_data["pattern_matches"].keys(), key=len, reverse=True):
             if pattern.lower() in basename.lower(): 
-                return [p["name"] for p in yaml_data["pattern_matches"][pattern].get("proteins", [])]
+                names = [p["name"] for p in yaml_data["pattern_matches"][pattern].get("proteins",[])]
+                return {"is_multimer": len(names) > 1, "names": names}
                 
     parts = basename.split("_")
     multimers = [p for p in parts if re.match(r"^[a-z]-", p, re.IGNORECASE)]
     names = [p.split("-", 1)[1] for p in multimers] if multimers else [parts[0]]
-    return [clean_protein_name(n).lower() for n in names]
+    
+    return {
+        "is_multimer": bool(multimers), 
+        "names": [clean_protein_name(n).lower() for n in names]
+    }
 
-# =============================================================================
-# WORKER MODE
-# =============================================================================
-def run_worker(chunk_file, config_file):
-    """Parses a subset of files and dumps a JSON results array."""
-    # Extract worker ID from the filename for chatty logging
+def run_worker(chunk_file, config_file, max_chains):
     worker_id = re.search(r'chunk_(\d+)', chunk_file).group(1) if re.search(r'chunk_(\d+)', chunk_file) else "?"
     
     with open(chunk_file, 'r') as f:
@@ -76,32 +75,25 @@ def run_worker(chunk_file, config_file):
 
     results = []
     for fpath in files:
-        names = get_protein_names(fpath, yaml_data)
-        seqs = extract_sequences(fpath)
+        name_data = get_protein_names(fpath, yaml_data)
+        names = name_data["names"]
+        
+        seqs = extract_sequences(fpath)[:max_chains]
+        
         for entry in seqs:
             seq, chain = entry["sequence"], entry["chain"]
             idx = ord(chain.upper()) - ord("A")
             pname = names[idx] if idx < len(names) else names[-1]
-            results.append({
-                "seq": seq,
-                "chain": chain,
-                "pname": pname,
-                "file": fpath
-            })
+                
+            results.append({"seq": seq, "chain": chain, "pname": pname, "file": fpath})
             
     out_json = chunk_file.replace(".txt", ".json")
-    with open(out_json, "w") as f:
-        json.dump(results, f)
-        
+    with open(out_json, "w") as f: json.dump(results, f)
     print(f"  <- [Worker {worker_id}] Finished! Extracted {len(results)} sequence chains.", flush=True)
 
-# =============================================================================
-# ORCHESTRATOR MODE
-# =============================================================================
 def run_orchestrator(args):
     print("\n[*] Orchestrator: Scanning for structural files (.cif / .pdb)...")
     struct_files = glob.glob("**/*.cif", recursive=True) + glob.glob("**/*.pdb", recursive=True)
-    
     if not struct_files: 
         print("[!] Orchestrator: No CIF/PDB files found.")
         return
@@ -119,25 +111,18 @@ def run_orchestrator(args):
         if not chunk_files: continue
         
         chunk_txt = os.path.join(chunk_dir, f"chunk_{i}.txt")
-        with open(chunk_txt, "w") as f:
-            f.write("\n".join(chunk_files))
+        with open(chunk_txt, "w") as f: f.write("\n".join(chunk_files))
             
-        cmd = [sys.executable, __file__, "--chunk", chunk_txt]
+        cmd = [sys.executable, __file__, "--chunk", chunk_txt, "--max-chains", str(args.max_chains)]
         if args.config: cmd.extend(["--config", args.config])
         elif os.path.exists("proteins.yaml"): cmd.extend(["--config", "proteins.yaml"])
         
         p = subprocess.Popen(cmd)
         processes.append(p)
 
-    print(f"[*] Orchestrator: All workers dispatched. Waiting for completion...", flush=True)
-    
-    # Wait for all workers to finish
-    for p in processes:
-        p.wait()
+    for p in processes: p.wait()
 
     print(f"\n[*] Orchestrator: Workers completed. Merging and deduplicating sequence data...", flush=True)
-
-    # Merge worker outputs
     global_map = {}
     json_chunks = glob.glob(os.path.join(chunk_dir, "*.json"))
     
@@ -146,30 +131,19 @@ def run_orchestrator(args):
             data = json.load(f)
             for item in data:
                 seq, pname, chain, fpath = item["seq"], item["pname"], item["chain"], item["file"]
-                
-                # Global Deduplication
-                if seq not in global_map:
-                    global_map[seq] = {"protein_name": pname, "chains": [chain], "example_file": fpath}
+                if seq not in global_map: global_map[seq] = {"protein_name": pname, "chains": [chain], "example_file": fpath}
                 else:
-                    if len(pname) > len(global_map[seq]["protein_name"]): 
-                        global_map[seq]["protein_name"] = pname
-                    if chain not in global_map[seq]["chains"]: 
-                        global_map[seq]["chains"].append(chain)
+                    if len(pname) > len(global_map[seq]["protein_name"]): global_map[seq]["protein_name"] = pname
+                    if chain not in global_map[seq]["chains"]: global_map[seq]["chains"].append(chain)
 
-    # Write Final Output
     with open(args.out, "w") as f:
-        for seq, info in global_map.items(): 
-            f.write(f">{info['protein_name'].upper()}\n{seq}\n")
+        for seq, info in global_map.items(): f.write(f">{info['protein_name'].upper()}\n{seq}\n")
 
     out_map = {info["protein_name"]: {"sequence": seq, "chains": info["chains"], "example_file": info["example_file"]} for seq, info in global_map.items()}
-    with open(args.map, "w") as f: 
-        json.dump(out_map, f, indent=2)
+    with open(args.map, "w") as f: json.dump(out_map, f, indent=2)
 
-    print(f"[*] Orchestrator: Cleaning up temporary directory '{chunk_dir}/'...", flush=True)
     shutil.rmtree(chunk_dir)
-    
     print(f"✅ Extracted {len(global_map)} globally unique sequences to {args.out}")
-
 
 def main():
     parser = argparse.ArgumentParser()
@@ -177,15 +151,12 @@ def main():
     parser.add_argument("--map", default="fasta_source_map.json")
     parser.add_argument("--config", help="YAML file for explicit naming")
     parser.add_argument("-c", "--cores", type=int, default=8, help="Number of CPU cores")
-    parser.add_argument("--chunk", type=str, help=argparse.SUPPRESS) # Hidden argument for workers
+    parser.add_argument("--max-chains", type=int, default=2, help="Limit extraction to the first N chains")
+    parser.add_argument("--chunk", type=str, help=argparse.SUPPRESS)
     args = parser.parse_args()
 
-    if args.chunk:
-        # We are inside a background worker process
-        run_worker(args.chunk, args.config)
-    else:
-        # We are the main orchestrator
-        run_orchestrator(args)
+    if args.chunk: run_worker(args.chunk, args.config, args.max_chains)
+    else: run_orchestrator(args)
 
 if __name__ == "__main__":
     main()

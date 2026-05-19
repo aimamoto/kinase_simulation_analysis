@@ -188,6 +188,26 @@ if __name__ == "__main__":
     args = parser.parse_args()
     
     aligned_seqs = run_hmmalign(args.input, args.hmm)
+
+    # --- FILTER OUT NON-KINASES (CO-FACTORS) ---
+    if os.path.exists(args.landmarks):
+        with open(args.landmarks, 'r') as f:
+            lm_data = json.load(f)
+        
+        filtered_seqs = {}
+        for seq_id, seq in aligned_seqs.items():
+            # Only keep sequences that have the conserved DFG ('f') landmark
+            if seq_id in lm_data and lm_data[seq_id].get("f") is not None:
+                filtered_seqs[seq_id] = seq
+            else:
+                print(f"[*] Excluding non-kinase sequence from visualizations: {seq_id}")
+        
+        aligned_seqs = filtered_seqs
+
+    if not aligned_seqs:
+        print("[!] No valid kinases found for visualization. Exiting module.")
+        sys.exit(0)
+
     alignment_length = len(list(aligned_seqs.values())[0])
     mapped_landmarks = map_coordinates_to_alignment(aligned_seqs, args.input, args.landmarks, "PKA")
     
