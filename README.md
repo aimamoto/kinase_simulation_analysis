@@ -3,7 +3,7 @@
 This pipeline automates the extraction, sequence alignment, and structural analysis of kinase protein simulations (AlphaFold 3 or MD). It is optimized for batch processing large sets of simulations, such as combinatorial mutant matrices (e.g., 4x8 EGFR/ERBB variants) and single-protein runs (e.g., ABL1 wild-type).
 
 ## Project Goal
-This pipeline is developed as a sister project of another pipeline specific for the ERBB family dimers (github.com/aimamoto/erbb_dimer_complex). While the sister project relies on the landmark residues in the ERBB family, this project aims to extend the analysis schemes to a broad range of KINOME-wide kinases using hmmer. So far, tested in the ERBB family members, SRC, CSK, ABL, FAK, JAK2, and PKA catalytic subunit.
+This pipeline is developed as a sister project of another pipeline specific for the ERBB family dimers (github.com/aimamoto/erbb_dimer_complex). While the sister project relies on the landmark residues in the ERBB family, this project aims to extend the analysis schemes to a broad range of KINOME-wide kinases using hmmer. So far, tested in CDK1 (with or without Cyclin B1 and key phosphorylation), SRC-CSK heterodimer, the ERBB family members, ABL, FAK, JAK2, and PKA catalytic subunit.
 
 ## Pipeline Capabilities & Evolution
 
