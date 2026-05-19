@@ -13,6 +13,11 @@ TARGET_A   <- gsub("___", "\n", args[2])
 TARGET_B   <- gsub("___", "\n", args[3])
 GROUP_COL  <- args[4]  # e.g., "Macro_State", "Condition", or "Group_Name"
 
+# --- Dependencies & Setup Safety Net ---
+required_packages <- c("tidyverse", "rstatix", "ggrepel")
+new_packages <- required_packages[!(required_packages %in% installed.packages()[,"Package"])]
+if(length(new_packages)) install.packages(new_packages, repos = "http://cran.us.r-project.org")
+
 suppressPackageStartupMessages({
   library(tidyverse)
   library(rstatix)
