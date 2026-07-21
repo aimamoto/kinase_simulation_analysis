@@ -11,7 +11,7 @@ from chimerax.core.commands import run
 # UPDATE LOG (v6r5 -> v6r6)
 # Date: May 18, 2026
 #
-# 1. Universal Steric Co-Factor Integration (CDK-Cyclin / RAF-14-3-3 Support):
+# 1. Universal Steric Co-Factor Integration (CDK-Cyclin Support):
 #    - Non-kinase chains are no longer discarded. They are preserved as `cofactors`.
 #    - Distances from the kinase's αC-helix and Activation Loop are tracked.
 #    - CoFactor_Name, CoFactor_aC_Dist, CoFactor_ActLoop_Dist added to CSV.
@@ -22,6 +22,13 @@ from chimerax.core.commands import run
 #
 # 3. Cosmetic CXC Fix:
 #    - Strips 'A-' or 'B-' prefixes natively from the ChimeraX visualization text.
+#
+# UPDATE LOG (v6r7 -> v7)
+# Date: June 4, 2026
+#
+# 1. Added Cleft Gaping (Roof-to-Floor Distance) metric (Roof CA to HRD-Asp CA)
+# 2. Added Mg2+ Hijacking metric (Inhibitory Phosphate O/P to Mg2+ ion)
+# 3. Added Substrate Clearance Angle (Roof CA - ATP_PG - HRD-Asp CA)
 # ==============================================================================
 
 # --- CONFIGURATION ---
@@ -80,6 +87,16 @@ def calculate_dihedral(p1: np.ndarray, p2: np.ndarray, p3: np.ndarray, p4: np.nd
     x = np.dot(v, w); y = np.dot(np.cross(b1, v), w)
     return np.degrees(np.arctan2(y, x))
 
+def calculate_angle(p1: np.ndarray, p2: np.ndarray, p3: np.ndarray) -> Optional[float]:
+    if any(x is None for x in [p1, p2, p3]): return None
+    v1 = p1 - p2
+    v2 = p3 - p2
+    n1 = np.linalg.norm(v1)
+    n2 = np.linalg.norm(v2)
+    if n1 == 0 or n2 == 0: return None
+    cosine_angle = np.clip(np.dot(v1, v2) / (n1 * n2), -1.0, 1.0)
+    return float(np.degrees(np.arccos(cosine_angle)))
+
 def get_min_sc_dist(res1: Any, res2: Any) -> float:
     sc1 = get_sidechain_atoms(res1); sc2 = get_sidechain_atoms(res2)
     if sc1 is None or sc2 is None or len(sc1) == 0 or len(sc2) == 0: return 999.9
@@ -101,54 +118,10 @@ def get_min_dist(res_group_1: Any, res_group_2: Any) -> float:
     diff = c1[:, np.newaxis, :] - c2[np.newaxis, :, :]
     return float(np.min(np.linalg.norm(diff, axis=2)))
 
-def is_raf_system(sim_id: str, chain_types: List[str]) -> bool:
-    search_string = (sim_id + " " + " ".join(chain_types)).lower()
-    return any(x in search_string for x in ['raf', 'braf', 'raf1', 'craf'])
-
-def get_raf_interface_metrics(res_a: Any, res_b: Any, lm_a: Dict, lm_b: Dict) -> Tuple[float, float, float]:
-    a_glu, b_glu = lm_a.get('c'), lm_b.get('c')
-    if a_glu is None or b_glu is None: return 999.9, 999.9, 999.9
-    try:
-        r_a, l_a = res_a[a_glu + 8], res_a[a_glu + 4]
-        r_b, l_b = res_b[b_glu + 8], res_b[b_glu + 4]
-        helix_a = res_a[max(0, a_glu - 4) : a_glu + 5]
-        helix_b = res_b[max(0, b_glu - 4) : b_glu + 5]
-    except IndexError: return 999.9, 999.9, 999.9
-
-    cz_a = get_atom(r_a, "CZ") or get_atom(r_a, "CB") or get_atom(r_a, "CA")
-    cz_b = get_atom(r_b, "CZ") or get_atom(r_b, "CB") or get_atom(r_b, "CA")
-    com_helix_a, com_helix_b = get_center_of_mass(helix_a), get_center_of_mass(helix_b)
-
-    dist_a_push = float(np.linalg.norm(cz_a - com_helix_b)) if cz_a is not None and com_helix_b is not None else 999.9
-    dist_b_push = float(np.linalg.norm(cz_b - com_helix_a)) if cz_b is not None and com_helix_a is not None else 999.9
-    lla_dist = get_res_min_dist(l_a, l_b) if l_a and l_b else 999.9
-    return round(dist_a_push, 2), round(dist_b_push, 2), round(lla_dist, 2)
-
-def get_raf_tail_asymmetry(res_a: Any, res_b: Any, lm_a: Dict, lm_b: Dict) -> Tuple[float, float]:
-    def get_cleft(res, lm):
-        a = []
-        if lm.get('hrd') is not None: a.extend(res[lm['hrd']].atoms.scene_coords)
-        if lm.get('f') is not None: a.extend(res[lm['f']].atoms.scene_coords)
-        return np.array(a) if a else None
-
-    def get_tails(res, lm):
-        start = max(0, lm.get('k', 10) - 10)
-        end = min(len(res), lm.get('f', len(res)-40) + 40)
-        a = []
-        for i, r in enumerate(res):
-            if i < start or i > end: a.extend(r.atoms.scene_coords)
-        return np.array(a) if a else None
-
-    cl_a, cl_b = get_cleft(res_a, lm_a), get_cleft(res_b, lm_b)
-    tl_a, tl_b = get_tails(res_a, lm_a), get_tails(res_b, lm_b)
-
-    d_ta_cb = float(np.min(np.linalg.norm(tl_a[:, np.newaxis, :] - cl_b[np.newaxis, :, :], axis=2))) if tl_a is not None and cl_b is not None else 999.9
-    d_tb_ca = float(np.min(np.linalg.norm(tl_b[:, np.newaxis, :] - cl_a[np.newaxis, :, :], axis=2))) if tl_b is not None and cl_a is not None else 999.9
-    return round(d_ta_cb, 2), round(d_tb_ca, 2)
-
 def clean_protein_type(raw_type: str) -> str:
     name = re.sub(r'[_|-]?chain[_|-]?[A-Za-z0-9]+$', '', raw_type, flags=re.IGNORECASE)
     name = re.sub(r'^\d+[_\-|]', '', name)
+    name = re.sub(r'^[a-zA-Z]-', '', name) 
     tokens = re.split(r'[-_]', name)
     ignore_tokens = {'wt', 'cat', 'cattail', 'tail', 'wtcat', 'catwt', 'kd', 'apo', 'holo'}
     clean_tokens = []
@@ -242,7 +215,10 @@ def match_cofactor_to_fasta(chain_seq: str, fasta_seqs: Dict, expected_name: str
             best_ratio = ratio
             best_name = fasta_name
             
-    if best_ratio >= 0.30: return clean_protein_type(best_name)
+    if best_ratio >= 0.30: 
+        raw_name = clean_protein_type(best_name)
+        # Strip trailing unique identifiers added by extract_fasta.py (e.g., _1, _2)
+        return re.sub(r'_\d+$', '', raw_name)
     return "Unknown_CoFactor"
 
 def analyze_activation_loop_dynamic(residues: Any, lm: Dict) -> Tuple[str, str]:
@@ -351,8 +327,12 @@ def get_best_landmark_for_chain(chain_seq: str, cid: str, candidate_lms: List, f
             ratio = total_identical / len(chain_seq) if len(chain_seq) > 0 else 0.0
             used_ratio = True
 
-        composite = (ratio * 100) + struct_score
-        if fasta_name.endswith(f"_{cid}") or fasta_name.endswith(f"-{cid}") or f"chain_{cid}" in fasta_name.lower(): composite += 50
+        # [CRITICAL SCORING FIX] Make sequence identity the dominant factor. 
+        # A 100% match gets 1000 pts. A point mutant gets ~990 pts. Mismatches get 0.
+        composite = (ratio * 1000) + struct_score
+        
+        if fasta_name.endswith(f"_{cid}") or fasta_name.endswith(f"-{cid}") or f"chain_{cid}" in fasta_name.lower(): 
+            composite += 50
             
         if sim_id:
             sim_tokens = set(re.split(r'[-_]', sim_id.lower()))
@@ -363,11 +343,12 @@ def get_best_landmark_for_chain(chain_seq: str, cid: str, candidate_lms: List, f
                 if ft in {'apo', 'holo'} or re.match(r'^\d*(atp|adp|amp|gdp|gtp|anp)$', ft) or re.match(r'^p[sty]?\d+$', ft):
                     if ft not in sim_tokens: composite -= 15  
 
-        if expected_name:
+        # Only apply YAML folder-name assumptions if the sequence identity is remotely plausible (>30%)
+        if expected_name and ratio > 0.30:
             norm_exp = normalize_sim_name(expected_name).lower()
             norm_fas = normalize_sim_name(fasta_name).lower()
-            if norm_exp == norm_fas: composite += 1000
-            elif expected_name.lower() in fasta_name.lower() or norm_exp in norm_fas: composite += 500
+            if norm_exp == norm_fas: composite += 500
+            elif expected_name.lower() in fasta_name.lower() or norm_exp in norm_fas: composite += 250
 
         if composite > best_score:
             best_score = composite; best_lm = coords; best_name = fasta_name; best_ratio = ratio
@@ -391,6 +372,18 @@ def process_model(session, full_cif_path: str, base_dir: str, out_dir_core: str,
             expected_proteins = [p.get('name') for p in yaml_patterns[pattern].get('proteins', [])]
             break
 
+    # --- NEW HIGHER-ORDER COMPLEX FIX ---
+    # If the YAML config failed to capture tertiary/quaternary targets (e.g. c-shc-ch1), 
+    # dynamically extract the stoichiometry and identities from the sim_id namespace.
+    dynamic_expected = []
+    for token in sim_id.split('_'):
+        if re.match(r'^[a-z]-', token, re.IGNORECASE):
+            dynamic_expected.append(token[2:])
+            
+    if len(dynamic_expected) > len(expected_proteins):
+        expected_proteins = dynamic_expected
+    # ------------------------------------
+    
     sim_base = normalize_sim_name(sim_id)
     candidate_lms = []
     for fasta_name, coords in all_landmarks.items():
@@ -413,7 +406,7 @@ def process_model(session, full_cif_path: str, base_dir: str, out_dir_core: str,
     cofactors = {}
     has_kinase = False
     
-    valid_cids = [cid for cid in cids if len(get_sequence_and_residues(model, cid)[0]) >= 100]
+    valid_cids = [cid for cid in cids if len(get_sequence_and_residues(model, cid)[0]) >= 8]
     
     for cid in valid_cids:
         seq, res = get_sequence_and_residues(model, cid)
@@ -449,16 +442,79 @@ def process_model(session, full_cif_path: str, base_dir: str, out_dir_core: str,
         d1_val, d2_val, sb_dist_val, hrd_atp_dist_val = "N/A", "N/A", "N/A", "N/A"
         dfg_mg_dist_val, dfg_atp_dist_val, ploop_atp_dist_val = "N/A", "N/A", "N/A"
         aCb4_aE_dist_val, spine_bridge_dist_val = "N/A", "N/A"
+        cleft_gape_val, mg_hijack_val, clearance_angle_val = "N/A", "N/A", "N/A"
         
         closest_d_o_name, atp_spec = None, None
         closest_dfg_mg_atom, closest_mg_spec = None, None
         aCb4_aE_cmd = None
         ploop_res_nums, ac_b4_res_nums, aE_res_nums, sb_oe_names = [], [], [], []
 
+        # --- Substrate Angle & Cleft Gaping (Roof vs Floor) ---
+        roof_res = None
+        if lm.get('k') is not None and lm['k'] > 10:
+            start_search = max(0, lm['k'] - 35)
+            matches = list(re.finditer(r'G.G', seq[start_search:lm['k'] - 5]))
+            if matches:
+                p_idx = start_search + matches[-1].start()
+                # Expand search to reliably hit T14/Y15 equivalents
+                ploop_residues = res[p_idx : p_idx + 8] 
+            else:
+                ploop_residues = res[max(0, lm['k'] - 25):max(0, lm['k'] - 15)]
+                
+            ploop_res_nums = [r.number for r in ploop_residues]
+
+            # Prioritize Inhibitory Phosphates -> T/Y/S -> Center of P-Loop
+            for r in ploop_residues:
+                if r.name in ['PTR', 'SEP', 'TPO']:
+                    roof_res = r
+                    break
+            if roof_res is None:
+                for r in ploop_residues:
+                    if r.name in ['TYR', 'Y', 'THR', 'T', 'SER', 'S']:
+                        roof_res = r
+                        break
+            if roof_res is None and len(ploop_residues) > 0:
+                roof_res = ploop_residues[len(ploop_residues) // 2]
+                
+            # Metric 1: Cleft Gaping (Roof-to-Floor Dist)
+            floor_res = res[lm['hrd'] + 2] if (lm.get('hrd') is not None and lm['hrd'] + 2 < len(res)) else None
+            roof_ca = get_atom(roof_res, "CA") if roof_res else None
+            floor_ca = get_atom(floor_res, "CA") if floor_res else None
+            
+            if roof_ca is not None and floor_ca is not None:
+                cleft_gape_val = round(float(np.linalg.norm(roof_ca - floor_ca)), 2)
+
+            # Metric 2: Mg Hijacking (Inhibitory Phosphate to Mg2+)
+            mg_atoms = model.atoms[model.atoms.names == 'MG']
+            if len(mg_atoms) > 0 and roof_res is not None:
+                target_atoms = roof_res.atoms[np.isin(roof_res.atoms.names, ['P', 'O1P', 'O2P', 'O3P', 'OH', 'OG', 'OG1', 'O'])]
+                if len(target_atoms) == 0: target_atoms = roof_res.atoms
+                dists = np.linalg.norm(target_atoms.scene_coords[:, np.newaxis, :] - mg_atoms.scene_coords[np.newaxis, :, :], axis=2)
+                mg_hijack_val = round(float(np.min(dists)), 2)
+
+            # Metric 3: Substrate Clearance Angle (Roof_CA -- ATP_PG -- HRD_CA)
+            if roof_ca is not None and floor_ca is not None and chain_ligand_atoms is not None:
+                target_phos = []
+                for phos_group in [['PG', 'O1G', 'O2G', 'O3G'],['PB', 'O1B', 'O2B', 'O3B'],['PA', 'O1A', 'O2A', 'O3A']]:
+                    if any(np.isin(chain_ligand_atoms.names, phos_group)): target_phos = phos_group; break
+                if target_phos:
+                    lig_phosphates = chain_ligand_atoms[np.isin(chain_ligand_atoms.names, target_phos)]
+                    if len(lig_phosphates) > 0:
+                        atp_pg = lig_phosphates.scene_coords[0] 
+                        angle = calculate_angle(roof_ca, atp_pg, floor_ca)
+                        if angle is not None:
+                            clearance_angle_val = round(float(angle), 2)
+
+            if len(ploop_residues) > 0 and chain_ligand_atoms is not None:
+                lig_phosphates = chain_ligand_atoms[np.isin(chain_ligand_atoms.names, ['PG', 'O1G', 'O2G', 'O3G', 'PB', 'O1B', 'O2B', 'O3B', 'PA', 'O1A', 'O2A', 'O3A'])]
+                ploop_coords = []
+                for pr in ploop_residues: ploop_coords.extend(pr.atoms[np.isin(pr.atoms.names, ['N', 'CA', 'C', 'CB'])].scene_coords)
+                if len(lig_phosphates) > 0 and len(ploop_coords) > 0: ploop_atp_dist_val = round(float(np.min(np.linalg.norm(np.array(ploop_coords)[:, np.newaxis, :] - lig_phosphates.scene_coords[np.newaxis, :, :], axis=2))), 2)
+
+        # Standard Core Distances
         if lm.get('hrd') is not None and lm['hrd'] + 2 < len(res) and chain_ligand_atoms is not None:
             hrd_sc = get_sidechain_atoms(res[lm['hrd'] + 2])
             d_oxygens = hrd_sc[np.isin(hrd_sc.names, [n for n in hrd_sc.names if n.startswith('O') or n.startswith('N')])]
-            
             target_phos = []
             for phos_group in [['PG', 'O1G', 'O2G', 'O3G'],['PB', 'O1B', 'O2B', 'O3B'],['PA', 'O1A', 'O2A', 'O3A']]:
                 if any(np.isin(chain_ligand_atoms.names, phos_group)): target_phos = phos_group; break
@@ -488,18 +544,6 @@ def process_model(session, full_cif_path: str, base_dir: str, out_dir_core: str,
             if len(d_oxygens) > 0 and chain_ligand_atoms is not None:
                 lig_phosphates = chain_ligand_atoms[np.isin(chain_ligand_atoms.names, ['PG', 'O1G', 'O2G', 'O3G', 'PB', 'O1B', 'O2B', 'O3B', 'PA', 'O1A', 'O2A', 'O3A'])]
                 if len(lig_phosphates) > 0: dfg_atp_dist_val = round(float(np.min(np.linalg.norm(d_oxygens.scene_coords[:, np.newaxis, :] - lig_phosphates.scene_coords[np.newaxis, :, :], axis=2))), 2)
-
-        if lm.get('k') is not None and lm['k'] > 10:
-            start_search = max(0, lm['k'] - 35)
-            matches = list(re.finditer(r'G.G', seq[start_search:lm['k'] - 5]))
-            ploop_residues = res[start_search + matches[-1].start():start_search + matches[-1].end() + 2] if matches else res[max(0, lm['k'] - 25):max(0, lm['k'] - 15)]
-                
-            ploop_res_nums = [r.number for r in ploop_residues]
-            if len(ploop_residues) > 0 and chain_ligand_atoms is not None:
-                lig_phosphates = chain_ligand_atoms[np.isin(chain_ligand_atoms.names, ['PG', 'O1G', 'O2G', 'O3G', 'PB', 'O1B', 'O2B', 'O3B', 'PA', 'O1A', 'O2A', 'O3A'])]
-                ploop_coords = []
-                for pr in ploop_residues: ploop_coords.extend(pr.atoms[np.isin(pr.atoms.names, ['N', 'CA', 'C', 'CB'])].scene_coords)
-                if len(lig_phosphates) > 0 and len(ploop_coords) > 0: ploop_atp_dist_val = round(float(np.min(np.linalg.norm(np.array(ploop_coords)[:, np.newaxis, :] - lig_phosphates.scene_coords[np.newaxis, :, :], axis=2))), 2)
 
         if lm.get('c') is not None and lm.get('hrd') is not None:
             ac_b4_res, aE_res = res[lm['c'] + 8 : lm['c'] + 15], res[max(0, lm['hrd'] - 25) : max(0, lm['hrd'] - 10)]
@@ -579,6 +623,7 @@ def process_model(session, full_cif_path: str, base_dir: str, out_dir_core: str,
             "meta": {"Type": lm_name, "State": state, "CHelix": chelix_label,
                      "RSpine": r_spine, "CSpine": c_spine, "Spatial": spatial_label, "Dihedral": dihedral_label,
                      "ActLoop_NT": nt_loop, "ActLoop_CT": ct_loop, "Phi_D": raw_phi_d, "Psi_D": raw_psi_d,
+                     "Cleft_Gape_Dist": cleft_gape_val, "Mg_Hijack_Dist": mg_hijack_val, "Substrate_Clearance_Angle": clearance_angle_val,
                      "D1_Dist": d1_val, "D2_Dist": d2_val, "SB_Dist": sb_dist_val, 
                      "HRD_ATP_Dist": hrd_atp_dist_val, "DFG_Mg_Dist": dfg_mg_dist_val,
                      "DFG_ATP_Dist": dfg_atp_dist_val, "PLoop_ATP_Dist": ploop_atp_dist_val,
@@ -640,24 +685,7 @@ def process_model(session, full_cif_path: str, base_dir: str, out_dir_core: str,
             cA, cB = cids_valid[i], cids_valid[j]
             if chain_data[cA]['landmarks'] and chain_data[cB]['landmarks']:
                 role_a, role_b, dAC_BN, dBC_AN = analyze_dimer_interface(chain_data[cA], chain_data[cB], use_erbb_terms)
-                raf_a_push, raf_b_push, raf_lla_dist, tail_a_block, tail_b_block = "N/A", "N/A", "N/A", "N/A", "N/A"
-                
-                if is_raf_system(sim_id, [chain_data[cA]['meta']['Type'], chain_data[cB]['meta']['Type']]) and role_a == "Symmetric":
-                    pA, pB, lla = get_raf_interface_metrics(chain_data[cA]['residues'], chain_data[cB]['residues'], chain_data[cA]['landmarks'], chain_data[cB]['landmarks'])
-                    raf_a_push, raf_b_push, raf_lla_dist = pA, pB, lla
-                    tA_cB, tB_cA = get_raf_tail_asymmetry(chain_data[cA]['residues'], chain_data[cB]['residues'], chain_data[cA]['landmarks'], chain_data[cB]['landmarks'])
-                    tail_a_block, tail_b_block = tA_cB, tB_cA
-                    
-                    if min(tA_cB, tB_cA) < 7.0 and abs(tA_cB - tB_cA) > 3.0:
-                        if tA_cB < tB_cA: role_a, role_b = "Receiver", "Activator (Tail Blocked)"
-                        else: role_a, role_b = "Activator (Tail Blocked)", "Receiver"
-                    elif lla != 999.9 and lla < 6.0:
-                        if (pA - pB) < -2.0: role_a, role_b = "Activator", "Receiver"
-                        elif (pA - pB) > 2.0: role_a, role_b = "Receiver", "Activator"
 
-                for c_tgt, pA_push, pB_push, tA_bl, tB_bl in [(cA, raf_a_push, raf_b_push, tail_a_block, tail_b_block), (cB, raf_b_push, raf_a_push, tail_b_block, tail_a_block)]:
-                    chain_data[c_tgt]['meta'].update({'RAF_A_Push': pA_push, 'RAF_B_Push': pB_push, 'RAF_LLA_Core': raf_lla_dist, 'RAF_Tail_A_Block': tA_bl, 'RAF_Tail_B_Block': tB_bl})
-                
                 if role_a != "Unpaired":
                     chain_roles[cA], chain_roles[cB] = role_a, role_b
                     partner_map[cA], partner_map[cB] = cB, cA
@@ -676,7 +704,6 @@ def process_model(session, full_cif_path: str, base_dir: str, out_dir_core: str,
     # =========================================================================
     # --- SPLIT VISUALIZATION GENERATORS ---
     # =========================================================================
-    # Strip chain-prefix (e.g., A-CDK1 -> CDK1) for cleaner on-screen CXC labels
     display_names = [re.sub(r'^[A-Za-z]-', '', data['meta']['Type']) for data in chain_data.values()]
     protein_name = " / ".join(sorted(list(set(display_names))))
     
@@ -748,16 +775,16 @@ def process_model(session, full_cif_path: str, base_dir: str, out_dir_core: str,
             "Shell_State": meta['Shell_State'], "Spatial": meta['Spatial'], "Dihedral": meta['Dihedral'],
             "ActLoop_NT": meta.get('ActLoop_NT', 'N/A'), "ActLoop_CT": meta.get('ActLoop_CT', 'N/A'), 
             "Phi_D": meta.get('Phi_D', 'N/A'), "Psi_D": meta.get('Psi_D', 'N/A'),
+            "Cleft_Gape_Dist": meta.get('Cleft_Gape_Dist', 'N/A'),
+            "Mg_Hijack_Dist": meta.get('Mg_Hijack_Dist', 'N/A'),
+            "Substrate_Clearance_Angle": meta.get('Substrate_Clearance_Angle', 'N/A'),
             "D1_Dist": meta['D1_Dist'], "D2_Dist": meta['D2_Dist'], "SB_Dist": meta['SB_Dist'],
             "HRD_ATP_Dist": meta['HRD_ATP_Dist'], "DFG_Mg_Dist": meta.get('DFG_Mg_Dist', 'N/A'), 
             "DFG_ATP_Dist": meta.get('DFG_ATP_Dist', 'N/A'), "PLoop_ATP_Dist": meta.get('PLoop_ATP_Dist', 'N/A'),
             "aCb4_aE_Dist": meta.get('aCb4_aE_Dist', 'N/A'), "Spine_Bridge_Dist": meta.get('Spine_Bridge_Dist', 'N/A'),
             "V104_RS2_Dist": meta['V104_RS2_Dist'], "I150_HRD_Dist": meta['I150_HRD_Dist'], "Shell_M118_M120_Dist": meta['Shell_M118_M120_Dist'],
             "Y156_N99_Dist": meta['Y156_N99_Dist'], "K105_E107_Dist": meta['K105_E107_Dist'], 
-            "K105_E121_Dist": meta['K105_E121_Dist'], "K105_N99_Dist": meta['K105_N99_Dist'], "D220_HRD_Dist": meta['D220_HRD_Dist'],
-            "RAF_A_Push": meta.get('RAF_A_Push', 'N/A'), "RAF_B_Push": meta.get('RAF_B_Push', 'N/A'), 
-            "RAF_LLA_Core": meta.get('RAF_LLA_Core', 'N/A'),
-            "RAF_Tail_A_Block": meta.get('RAF_Tail_A_Block', 'N/A'), "RAF_Tail_B_Block": meta.get('RAF_Tail_B_Block', 'N/A')
+            "K105_E121_Dist": meta['K105_E121_Dist'], "K105_N99_Dist": meta['K105_N99_Dist'], "D220_HRD_Dist": meta['D220_HRD_Dist']
         })
 
         lm, res = data['landmarks'], data['residues']
@@ -765,7 +792,6 @@ def process_model(session, full_cif_path: str, base_dir: str, out_dir_core: str,
         hrd_d_num = res[lm['hrd'] + 2].number if (lm.get('hrd') is not None and lm['hrd'] + 2 < len(res)) else None
         spec = f"/{cid}"
         
-        # Strip chain-prefix just for the visual 2D label
         clean_type = re.sub(r'^[A-Za-z]-', '', meta['Type'])
         role_str = f" | {chain_roles[cid]}" if chain_roles[cid] not in ["N/A", "Unpaired"] else ""
         state_label = f"2dlabels create State_{cid} text 'Chain {cid} ({clean_type}{role_str}): {meta['State']}' color white size 20 xpos 0.05 ypos {y_offset}"
@@ -863,7 +889,7 @@ def main(session):
     chunk_list_file = os.environ.get("CHIMERAX_CHUNK")
     if not chunk_list_file or not os.path.exists(chunk_list_file): run(session, "quit"); return
 
-    out_csv_name = f"{os.path.splitext(os.path.basename(chunk_list_file))[0]}_results_v6r6.csv"
+    out_csv_name = f"{os.path.splitext(os.path.basename(chunk_list_file))[0]}_results_v7r2.csv"
     landmarks_file = os.path.join(base_dir, LANDMARKS_JSON)
     if not os.path.exists(landmarks_file): run(session, "quit"); return
         
@@ -896,12 +922,13 @@ def main(session):
             "CoFactor_Name", "CoFactor_aC_Dist", "CoFactor_ActLoop_Dist",
             "Interface_C_Lobe_Donor_Dist", "Interface_N_Lobe_Rec_Dist",
             "R_Spine", "C_Spine", "C_Helix", "Shell_State", "Spatial", "Dihedral", "ActLoop_NT", "ActLoop_CT", 
-            "Phi_D", "Psi_D", "D1_Dist", "D2_Dist", "SB_Dist", 
+            "Phi_D", "Psi_D", 
+            "Cleft_Gape_Dist", "Mg_Hijack_Dist", "Substrate_Clearance_Angle", # NEW METRICS
+            "D1_Dist", "D2_Dist", "SB_Dist", 
             "HRD_ATP_Dist", "DFG_Mg_Dist", "DFG_ATP_Dist", "PLoop_ATP_Dist",
             "aCb4_aE_Dist", "Spine_Bridge_Dist",
             "V104_RS2_Dist", "I150_HRD_Dist", "Shell_M118_M120_Dist",
-            "Y156_N99_Dist", "K105_E107_Dist", "K105_E121_Dist", "K105_N99_Dist", "D220_HRD_Dist",
-            "RAF_A_Push", "RAF_B_Push", "RAF_LLA_Core", "RAF_Tail_A_Block", "RAF_Tail_B_Block"]
+            "Y156_N99_Dist", "K105_E107_Dist", "K105_E121_Dist", "K105_N99_Dist", "D220_HRD_Dist"]
            
     all_rows = list() 
     for full_cif_path in files_to_process:

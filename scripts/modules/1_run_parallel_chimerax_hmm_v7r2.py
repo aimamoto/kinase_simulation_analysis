@@ -14,8 +14,8 @@ import shutil
 import pandas as pd
 
 # --- CONFIGURATION ---
-WORKER_SCRIPT = os.path.join("modules", "chimerax_hmm_worker_v6r6.py")
-FINAL_CSV_NAME = "hmm_kinase_analysis_results_v6r6.csv"
+WORKER_SCRIPT = os.path.join("modules", "chimerax_hmm_worker_v7r2.py")
+FINAL_CSV_NAME = "hmm_kinase_analysis_results_v7r2.csv"
 CHUNK_DIR = "temp_chimerax_chunks"
 
 def ensure_hmm_landmarks():
@@ -24,6 +24,9 @@ def ensure_hmm_landmarks():
     except Exception: sys.exit(1)
 
 def filter_cif_files(cif_files):
+    # Skip any path under an 'archive*' subdirectory (case-insensitive)
+    cif_files = [c for c in cif_files
+                 if not any(p.lower().startswith('archive') for p in c.replace('\\', '/').split('/'))]
     dirs_with_nested_seeds = set()
     for cif in cif_files:
         cif_norm = cif.replace("\\", "/")
@@ -67,7 +70,10 @@ def run_chimerax_chunk(chunk_file):
     except Exception: return False
 
 def merge_csvs():
-    csv_files = glob.glob("*_results_v6r6.csv") + glob.glob(os.path.join(CHUNK_DIR, "*_results_v6r6.csv"))
+    # Only merge per-chunk worker outputs (chunk_<i>_results_v7r2.csv). A broad
+    # "*_results_v7*.csv" also matches the aggregate FINAL/master files, which
+    # would concatenate a stale full dataset into the merge and duplicate rows.
+    csv_files = glob.glob("chunk_*_results_v7*.csv") + glob.glob(os.path.join(CHUNK_DIR, "chunk_*_results_v7*.csv"))
     if FINAL_CSV_NAME in csv_files: csv_files.remove(FINAL_CSV_NAME)
     if not csv_files: return
 

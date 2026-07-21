@@ -22,6 +22,7 @@ AA_MAP = {
 
 def clean_protein_name(raw_name):
     name = re.sub(r'^\d+[_\-|]', '', raw_name)
+    name = re.sub(r'^[a-zA-Z]-', '', name)  # Strip chain tags like 'a-', 'b-', 'c-'
     name = re.sub(r'[-_](apo|holo|\d*atp|\d*adp|\d*amp|\d*gtp|\d*gdp|\d*anp)$', '', name, flags=re.IGNORECASE)
     name = re.sub(r'(wt|cattail|cat|tail)', '', name, flags=re.IGNORECASE)
     name = re.sub(r'[-_]p[sty]?\d+', '', name, flags=re.IGNORECASE) 
@@ -46,9 +47,11 @@ def get_protein_names(filepath, yaml_data=None):
     if re.search(r"seed[-_]\d+[-_]sample", basename, re.IGNORECASE): 
         basename = os.path.basename(os.path.dirname(folder))
     
+    # [FIX] Use the full normalized path to catch the YAML folder patterns
+    norm_path = filepath.replace('\\', '/')
     if yaml_data and "pattern_matches" in yaml_data:
         for pattern in sorted(yaml_data["pattern_matches"].keys(), key=len, reverse=True):
-            if pattern.lower() in basename.lower(): 
+            if pattern.lower() in norm_path.lower(): 
                 names = [p["name"] for p in yaml_data["pattern_matches"][pattern].get("proteins",[])]
                 return {"is_multimer": len(names) > 1, "names": names}
                 
@@ -94,7 +97,10 @@ def run_worker(chunk_file, config_file, max_chains):
 def run_orchestrator(args):
     print("\n[*] Orchestrator: Scanning for structural files (.cif / .pdb)...")
     struct_files = glob.glob("**/*.cif", recursive=True) + glob.glob("**/*.pdb", recursive=True)
-    if not struct_files: 
+    # Skip any path under an 'archive*' subdirectory (case-insensitive)
+    struct_files = [f for f in struct_files
+                    if not any(p.lower().startswith('archive') for p in f.replace('\\', '/').split('/'))]
+    if not struct_files:
         print("[!] Orchestrator: No CIF/PDB files found.")
         return
 
@@ -131,13 +137,29 @@ def run_orchestrator(args):
             data = json.load(f)
             for item in data:
                 seq, pname, chain, fpath = item["seq"], item["pname"], item["chain"], item["file"]
-                if seq not in global_map: global_map[seq] = {"protein_name": pname, "chains": [chain], "example_file": fpath}
+                if seq not in global_map: 
+                    global_map[seq] = {"protein_name": pname, "chains": [chain], "example_file": fpath}
                 else:
-                    if len(pname) > len(global_map[seq]["protein_name"]): global_map[seq]["protein_name"] = pname
-                    if chain not in global_map[seq]["chains"]: global_map[seq]["chains"].append(chain)
+                    # [FIX] Only expand the name if it is a true sub-string expansion (prevents EGFR getting overwritten by peptide)
+                    old_name = global_map[seq]["protein_name"]
+                    if len(pname) > len(old_name) and old_name.lower() in pname.lower(): 
+                        global_map[seq]["protein_name"] = pname
+                    if chain not in global_map[seq]["chains"]: 
+                        global_map[seq]["chains"].append(chain)
 
+    # [FIX] Ensure absolute uniqueness of FASTA headers so HMMer doesn't overwrite dictionary keys
+    used_headers = set()
     with open(args.out, "w") as f:
-        for seq, info in global_map.items(): f.write(f">{info['protein_name'].upper()}\n{seq}\n")
+        for seq, info in global_map.items(): 
+            base_name = info['protein_name'].upper()
+            final_name = base_name
+            counter = 1
+            while final_name in used_headers:
+                final_name = f"{base_name}_{counter}"
+                counter += 1
+            used_headers.add(final_name)
+            info['fasta_header'] = final_name  
+            f.write(f">{final_name}\n{seq}\n")
 
     out_map = {info["protein_name"]: {"sequence": seq, "chains": info["chains"], "example_file": info["example_file"]} for seq, info in global_map.items()}
     with open(args.map, "w") as f: json.dump(out_map, f, indent=2)
