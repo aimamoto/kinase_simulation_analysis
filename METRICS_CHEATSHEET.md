@@ -80,10 +80,10 @@ These are discrete, rule-based classifications derived from the continuous metri
   * **Citation:** (Modi, 2019) [6].
 
 ## 🛑 Important Disclaimer: CSV vs. 3D Visuals
-If you compare the distances in the `hmm_kinase_analysis_results.csv` to the dashed lines drawn in the ChimeraX `.cxc` 3D visuals, you will notice different values. **This is intentional.**
+If you compare the distances in the `master_kinase_analysis_results_v7r2.csv` to the dashed lines drawn in the ChimeraX `.cxc` 3D visuals, you will notice that some values differ. **This is intentional.**
 
 1. **The CSV (Quantitative Data):** Calculates the **minimum heavy-atom sidechain distance** (e.g., Nitrogen to Oxygen). This represents the true stereochemical contact/bond distance used for all rigorous statistical plots.
-2. **The 3D Visuals (Qualitative Guide):** For structural features spanning large distances (Allosteric networks, R-Spine, Hydrophobic Shell), the macros draw lines between **Alpha-Carbons (Cα)**. This is a standard visualization technique used to track macroscopic backbone shifts without drawing messy lines that clip through the protein ribbons. (Note: Precise catalytic interactions, such as ATP-Mg2+ coordination, are still shown via precise heavy-atom distances in the 3D view).
+2. **The 3D Visuals (Qualitative Guide):** The macros use two drawing conventions depending on the interaction. For elements tracked as macroscopic backbone shifts (the R-Spine, the Hydrophobic Shell, and Cα landmarks such as I150–HRD and Y156–N99), lines are drawn between **Alpha-Carbons (Cα)** to track the backbone without drawing messy lines that clip through the protein ribbons; these Cα values differ from the CSV. For specific chemical contacts, the macros instead draw the **exact heavy-atom (atom-to-atom) shortest distance**, which reproduces the CSV value: this includes the β3-Lys–αC-Glu salt bridge (`SB_Dist`, drawn Nζ→nearest carboxylate oxygen), the αC-β4/αE polar contact, and catalytic coordination such as HRD–ATP and ATP-Mg2+.
 
 ---
 
