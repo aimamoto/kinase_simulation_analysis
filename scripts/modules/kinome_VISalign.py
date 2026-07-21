@@ -14,7 +14,8 @@ from matplotlib.path import Path
 DEFAULT_DOMAIN_LENGTH = 310
 LOBES = [{"name": "N-Lobe", "start": 1, "end": 116, "color": "#eeeeee"}, {"name": "C-Lobe", "start": 126, "end": DEFAULT_DOMAIN_LENGTH, "color": "#eeeeee"}]
 TOPOLOGY = [
-    {"name": "αA", "start": 15, "end": 35, "color": "#ff4d4d", "type": "helix"},
+    # αA (canonical 15-35) is N-terminal of the HMM-aligned core and has no
+    # landmark anchor, so it is intentionally omitted from the annotation.
     {"name": "β1", "start": 43, "end": 49, "color": "#66b3ff", "type": "sheet"},
     {"name": "β2", "start": 52, "end": 57, "color": "#66b3ff", "type": "sheet"},
     {"name": "β3", "start": 65, "end": 74, "color": "#66b3ff", "type": "sheet"},
@@ -47,11 +48,12 @@ KEY_LANDMARKS = {"k": {"label": "K(VAIK)", "color": "#8e44ad"}, "c": {"label": "
 def clean_display_name(raw_name):
     name = raw_name.split('/')[0]
     name = re.sub(r'^\d+[_\-|]', '', name)
+    name = re.sub(r'^[a-zA-Z]-', '', name)  # Strip chain tags like 'a-', 'b-', 'c-'
     name = re.sub(r'[-_](apo|holo|py\d+|\d*atp)$', '', name, flags=re.IGNORECASE)
     name = re.sub(r'(wt|cattail|cat|tail)', '', name, flags=re.IGNORECASE)
     name = re.sub(r'[-_]+', '-', name).strip('-')
     return name.upper() if name else raw_name.upper()
-
+    
 def run_hmmalign(fasta_path, hmm_path):
     cmd = ["hmmalign", "--trim", hmm_path, fasta_path]
     result = subprocess.run(cmd, capture_output=True, text=True, check=True)
@@ -109,13 +111,58 @@ def map_coordinates_to_alignment(aligned_seqs, fasta_path, json_path=None, refer
         if ape_match: mapped_landmarks["ape"] = ungapped_to_gapped[ape_match.end() - 1]
 
     residue_to_column = { (i + canonical_offset): col_idx for i, col_idx in enumerate(ungapped_to_gapped) }
-    def get_col(c_res): return residue_to_column.get(c_res, residue_to_column[min(residue_to_column.keys(), key=lambda k: abs(k - c_res))] if residue_to_column else 0)
+
+    # --- Multi-anchor coordinate map -------------------------------------------
+    # TOPOLOGY/MOTIF boundaries are defined in canonical (PKA) residue numbering.
+    # Extrapolating them from a single DFG anchor drifts badly across N-lobe
+    # indels (e.g. it mis-places the Gly-rich loop ~5 residues N-terminal of the
+    # real GxGxxG). Instead, register them against every HMM landmark whose
+    # canonical PKA number is known (the landmark names encode those numbers),
+    # plus the directly-detected glycine-rich loop, then piecewise-interpolate.
+    CANON_NUM = {"k": 72, "c": 91, "n99": 99, "v104": 104, "k105": 105,
+                 "e107": 107, "m118": 118, "m120": 120, "e121": 121,
+                 "i150": 150, "y156": 156, "hrd": 166, "f": 185,
+                 "ape": 208, "d220": 220}
+    anchors = [(CANON_NUM[node], col) for node, col in mapped_landmarks.items() if node in CANON_NUM]
+
+    # Detect the glycine-rich loop (GxGxxG) directly in the N-terminal region and
+    # anchor its three glycines to PKA G50/G52/G55.
+    gly_cols = None
+    gly_match = re.search(r'G.G..G', ungapped_seq[:70])
+    if gly_match:
+        g_idx = [gly_match.start(), gly_match.start() + 2, gly_match.start() + 5]
+        gly_cols = [ungapped_to_gapped[i] for i in g_idx]
+        anchors += list(zip((50, 52, 55), gly_cols))
+
+    # Sort by canonical residue and keep only anchors that stay monotonic in
+    # column order (guards against a single mis-mapped landmark inverting the map).
+    anchors = sorted(set(anchors))
+    mono = []
+    for a in anchors:
+        if not mono or a[1] > mono[-1][1]: mono.append(a)
+    anchors = mono
+
+    def get_col(c_res):
+        if len(anchors) < 2:
+            return residue_to_column.get(c_res, residue_to_column[min(residue_to_column.keys(), key=lambda k: abs(k - c_res))] if residue_to_column else 0)
+        if c_res <= anchors[0][0]:
+            (x0, y0), (x1, y1) = anchors[0], anchors[1]
+        elif c_res >= anchors[-1][0]:
+            (x0, y0), (x1, y1) = anchors[-2], anchors[-1]
+        else:
+            i = next(j for j in range(len(anchors) - 1) if anchors[j][0] <= c_res <= anchors[j + 1][0])
+            (x0, y0), (x1, y1) = anchors[i], anchors[i + 1]
+        if x1 == x0: return int(round(y0))
+        return int(round(y0 + (y1 - y0) * (c_res - x0) / (x1 - x0)))
 
     for f in TOPOLOGY: f["start"], f["end"] = get_col(f["start"]), get_col(f["end"])
     for m in MOTIFS:
         if "Activation Loop" in m["name"] and dfg_ungapped_idx and ape_ungapped_idx:
             m["start"], m["end"] = ungapped_to_gapped[max(0, dfg_ungapped_idx - 1)], ungapped_to_gapped[ape_ungapped_idx]
-        else: m["start"], m["end"] = get_col(m["start"]), get_col(m["end"])
+        elif "Gly-rich loop" in m["name"] and gly_cols:
+            m["start"], m["end"] = gly_cols[0] - 1, gly_cols[-1] + 1
+        else:
+            m["start"], m["end"] = get_col(m["start"]), get_col(m["end"])
     return mapped_landmarks
 
 def draw_helix(ax, x, y, w, h, c): ax.add_patch(patches.FancyBboxPatch((x, y), w, h, boxstyle="round,pad=0,rounding_size=0.15", ec='#cc0000', fc=c, zorder=2))

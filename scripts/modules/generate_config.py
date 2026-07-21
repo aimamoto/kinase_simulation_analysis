@@ -18,6 +18,7 @@ DEFAULT_YAML = "proteins.yaml"
 def clean_protein_name(raw_name):
     """Universally cleans structural states, PTMs, and construct tags, preserving mutations."""
     name = re.sub(r'^\d+[_\-|]', '', raw_name)
+    name = re.sub(r'^[a-zA-Z]-', '', name)  # Strip chain tags like 'a-', 'b-', 'c-'
     
     # 1. Broaden to catch apo, holo, 0atp, 1atp, gtp, etc., ANYWHERE in the string
     name = re.sub(r'[-_](apo|holo|\d*atp|\d*adp|\d*amp|\d*gtp|\d*gdp|\d*anp)\b', '', name, flags=re.IGNORECASE)
@@ -41,7 +42,7 @@ def scan_directories():
     print("[*] Scanning directories recursively (Massive Mode Enabled)...")
     for root, dirs, files in os.walk("."):
         # Filter ignored directories in-place to speed up the recursive walk
-        dirs[:] = [d for d in dirs if not d.startswith('.') and d not in IGNORE_DIRS and not d.startswith('plots_and_stats')]
+        dirs[:] = [d for d in dirs if not d.startswith('.') and d not in IGNORE_DIRS and not d.startswith('plots_and_stats') and not d.lower().startswith('archive')]
 
         # Check if this specific folder contains structure files
         has_structure = any(f.lower().endswith(('.cif', '.pdb')) for f in files)
@@ -64,7 +65,11 @@ def scan_directories():
         if re.search(r'(seed|model|fold|sample|unrelaxed|relaxed)', base_name, re.IGNORECASE) and len(path_parts) > 1:
             base_name = path_parts[-2]
         
-        singles.add(base_name.split('_')[0])
+        # Strip cosmetic single-letter prefixes (like a-, b-) from the raw extracted name
+        raw_single = base_name.split('_')[0]
+        clean_single = re.sub(r'^[a-zA-Z]-', '', raw_single)
+        
+        singles.add(clean_single)
 
     if not combos and not singles: 
         return None, None, None
@@ -90,11 +95,14 @@ def save_matrix_csv(matrix, chain_b, singles, filename=DEFAULT_MATRIX):
     print(f"✅ Scanned directories and saved matrix to: {filename}")
 
 def load_matrix_and_make_yaml(csv_path):
-    patterns = {}
+    approved_multi = set()
+    approved_single = set()
+    
+    # 1. Parse the audited 2D Matrix
     with open(csv_path, 'r') as f:
         reader = csv.reader(f)
         current_section = None
-        chain_b_vars =[]
+        chain_b_vars = []
         for row in reader:
             if not row or not row[0]: continue
             if "# MULTIMER" in row[0]:
@@ -109,18 +117,47 @@ def load_matrix_and_make_yaml(csv_path):
                 a_var = row[0]
                 for i, val in enumerate(row[1:]):
                     if val.lower() == 'x':
-                        b_var = chain_b_vars[i]
-                        pattern = f"a-{a_var}_b-{b_var}"
-                        clean_a = clean_protein_name(a_var)
-                        clean_b = clean_protein_name(b_var)
-                        patterns[pattern] = {"proteins":[{"name": clean_a.lower()}, {"name": clean_b.lower()}]}
+                        approved_multi.add((a_var, chain_b_vars[i]))
             elif current_section == "SINGLE":
                 if row[1].lower() == 'x':
-                    patterns[row[0]] = {"proteins":[{"name": clean_protein_name(row[0]).lower()}]}
+                    approved_single.add(row[0])
+                    
+    # 2. Rescan directories to build the fully-resolved n-dimensional patterns (a, b, c...)
+    patterns = {}
+    IGNORE_DIRS = {'modules', 'archives', 'temp_chimerax_chunks', 'old', 'cx_viz_core', 'cx_viz_allosteric'}
     
+    for root, dirs, files in os.walk("."):
+        dirs[:] = [d for d in dirs if not d.startswith('.') and d not in IGNORE_DIRS and not d.startswith('plots_and_stats') and not d.lower().startswith('archive')]
+        if not any(f.lower().endswith(('.cif', '.pdb')) for f in files): continue
+            
+        path_parts = root.replace('\\', '/').split('/')
+        base_name = path_parts[-1]
+        if re.search(r'(seed|model|fold|sample|unrelaxed|relaxed)', base_name, re.IGNORECASE) and len(path_parts) > 1:
+            base_name = path_parts[-2]
+            
+        tokens = base_name.split("_")
+        chain_tokens = [p for p in tokens if re.match(r"^[a-z]-", p, re.IGNORECASE)]
+        
+        if len(chain_tokens) >= 2:
+            a_name = chain_tokens[0].split("-", 1)[1]
+            b_name = chain_tokens[1].split("-", 1)[1]
+            # If A and B were approved in the matrix, add the ENTIRE chain list to YAML
+            if (a_name, b_name) in approved_multi:
+                pattern_key = "_".join(chain_tokens)
+                proteins = [{"name": clean_protein_name(t.split("-", 1)[1]).lower()} for t in chain_tokens]
+                patterns[pattern_key] = {"proteins": proteins}
+        elif len(chain_tokens) == 1:
+            single_name = chain_tokens[0].split("-", 1)[1]
+            if single_name in approved_single:
+                patterns[chain_tokens[0]] = {"proteins": [{"name": clean_protein_name(single_name).lower()}]}
+        else:
+            clean_single = re.sub(r'^[a-zA-Z]-', '', base_name.split('_')[0])
+            if clean_single in approved_single:
+                patterns[base_name] = {"proteins": [{"name": clean_protein_name(clean_single).lower()}]}
+
     config = {"metadata": {"generated": datetime.now().isoformat(), "tool": "generate_config.py"}, "pattern_matches": patterns}
     with open(DEFAULT_YAML, "w") as f: yaml.dump(config, f, sort_keys=False)
-    print(f"✅ Generated {DEFAULT_YAML} from {csv_path} ({len(patterns)} total patterns).")
+    print(f"✅ Generated {DEFAULT_YAML} from {csv_path} ({len(patterns)} fully resolved multimeric patterns).")
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
