@@ -1,7 +1,7 @@
 [METRICS_CHEATSHEET.md](https://github.com/user-attachments/files/26516007/METRICS_CHEATSHEET.md)
 # Kinase Structural Metrics Cheat Sheet
 
-This guide maps the raw measurements in `hmm_kinase_analysis_results_v4r1.csv` to their biological meaning, their visual representation in the R statistics pipeline (in the folder *analyzeR/*), and where to find them in your 3D ChimeraX sessions. 
+This guide maps the raw measurements in `master_kinase_analysis_results_v7r2.csv` to their biological meaning, their visual representation in the R statistics pipeline (`scripts/modules/`), and where to find them in your 3D ChimeraX sessions. 
 
 ## 1. The Catalytic Core & Hydrophobic Shell
 **3D Visual Location:** `cx_viz_core/` macros.  
