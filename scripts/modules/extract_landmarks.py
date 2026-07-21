@@ -16,6 +16,7 @@ TARGET_NODES = {30: "k", 48: "c", 52: "rs1", 56: "n99", 61: "v104", 62: "k105", 
 def clean_protein_name(raw_name):
     name = raw_name.split('/')[0] 
     name = re.sub(r'^\d+[_\-|]', '', name)
+    name = re.sub(r'^[a-zA-Z]-', '', name)  # Strip chain tags like 'a-', 'b-', 'c-'
     name = re.sub(r'[-_](apo|holo|py\d+|\d*atp)$', '', name, flags=re.IGNORECASE)
     name = re.sub(r'(wt|cattail|cat|tail)', '', name, flags=re.IGNORECASE)
     name = re.sub(r'[-_]+', '-', name).strip('-')
@@ -35,8 +36,24 @@ def extract_nodes_from_aligned_seq(a2m_seq: str, fasta_name: str):
     return mapping
 
 def run_hmmalign(hmm_path: str, fasta_path: str) -> str:
-    cmd = ["hmmalign", "--outformat", "A2M", "-o", TEMP_A2M, hmm_path, fasta_path]
+    # Filter out short peptides before running HMMer to keep JSON clean
+    filtered_fasta = "_temp_filtered.fasta"
+    with open(fasta_path, "r") as f_in, open(filtered_fasta, "w") as f_out:
+        name, seq_lines = None, []
+        for line in f_in:
+            line = line.strip()
+            if line.startswith(">"):
+                if name and sum(len(x) for x in seq_lines) >= 100:
+                    f_out.write(f">{name}\n{''.join(seq_lines)}\n")
+                name, seq_lines = line[1:], []
+            elif line:
+                seq_lines.append(line)
+        if name and sum(len(x) for x in seq_lines) >= 100:
+            f_out.write(f">{name}\n{''.join(seq_lines)}\n")
+            
+    cmd = ["hmmalign", "--outformat", "A2M", "-o", TEMP_A2M, hmm_path, filtered_fasta]
     subprocess.run(cmd, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    if os.path.exists(filtered_fasta): os.remove(filtered_fasta)
     return TEMP_A2M
 
 def parse_a2m(a2m_file: str) -> dict:

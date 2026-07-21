@@ -1,3 +1,4 @@
+
 #!/usr/bin/env python3
 import subprocess
 import sys
@@ -43,8 +44,8 @@ def main():
     engine_choice = "1"
 
     if choice == '1':
-        # [FIX]: Strictly search the current directory to prevent duplicate nested parsing.
-        raw_candidates = list(set(glob.glob("*_results_v6*.csv") + glob.glob("*_results.csv")))
+        # Strictly search the current directory to prevent duplicate nested parsing.
+        raw_candidates = list(set(glob.glob("*_results_v7*.csv") + glob.glob("*_results.csv")))
         ignore_pattern = re.compile(r"temp_chimerax_chunks|archive|old", re.IGNORECASE)
         csv_candidates = [f for f in raw_candidates if not ignore_pattern.search(f.replace("\\", "/"))]
         
@@ -54,7 +55,7 @@ def main():
             
         print(f"\n[*] Discovered {len(csv_candidates)} root result CSV files.")
         
-        # --- NEW: Quick Data Previewer ---
+        # Quick Data Previewer
         print("\n[*] Available Data Preview (Unique Naming Formats):")
         sample_ids = set()
         for c in csv_candidates:
@@ -66,7 +67,6 @@ def main():
                         base = sim_id.split('_')[0] 
                         sample_ids.add(base)
         print("    " + ", ".join(sorted(list(sample_ids))[:15]))
-        # ---------------------------------
 
         print("\n[Optional] Filter the dataset to analyze a specific biological cohort.")
         print("    Syntax: Use commas for 'AND', pipes '|' for 'OR', minus '-' to 'EXCLUDE'.")
@@ -78,7 +78,6 @@ def main():
         filter_suffix = ""
         if filter_str:
             raw_conditions = [c.strip() for c in filter_str.split(',')]
-            
             inc_blocks = []
             exc_keys = []
             
@@ -91,7 +90,6 @@ def main():
                     if or_terms: inc_blocks.append(or_terms)
             
             filtered_rows = []
-            
             for c in csv_candidates:
                 with open(c, 'r', encoding='utf-8-sig') as f:
                     reader = csv.DictReader(f)
@@ -99,14 +97,12 @@ def main():
                         row_str_orig = str(row.get('Directory', '')) + " " + str(row.get('Simulation_ID', ''))
                         row_str_lower = row_str_orig.lower()
                         
-                        # 1. Evaluate Inclusion Blocks
                         has_inc = True
                         for block in inc_blocks:
                             block_match = False
                             for term in block:
                                 sub_terms = [s.strip() for s in term.split(':')]
                                 sub_counts = Counter(sub_terms)
-                                
                                 term_match = True
                                 for sub, req_count in sub_counts.items():
                                     if sub.startswith('~'):
@@ -118,28 +114,23 @@ def main():
                                             sys.exit(1)
                                     elif sub.startswith('='):
                                         strict_term = re.escape(sub[1:])
-                                        # WT Anchor: Not preceded by a letter. Not followed by an alphanumeric suffix attached to a hyphen.
                                         pattern = rf"(?<![a-zA-Z]){strict_term}(?![a-zA-Z0-9]*-)"
                                         if len(re.findall(pattern, row_str_orig, re.IGNORECASE)) < req_count:
                                             term_match = False; break
                                     else:
                                         if row_str_lower.count(sub.lower()) < req_count:
                                             term_match = False; break
-                                
                                 if term_match:
                                     block_match = True
                                     break
-                                    
                             if not block_match:
                                 has_inc = False
                                 break
                         
-                        # 2. Evaluate Exclusion Keys
                         has_exc = False
                         for k in exc_keys:
                             sub_terms = [s.strip() for s in k.split(':')]
                             sub_counts = Counter(sub_terms)
-                            
                             k_match = True
                             for sub, req_count in sub_counts.items():
                                 if sub.startswith('~'):
@@ -155,7 +146,6 @@ def main():
                                 else:
                                     if row_str_lower.count(sub.lower()) < req_count:
                                         k_match = False; break
-                            
                             if k_match:
                                 has_exc = True
                                 break
@@ -183,7 +173,6 @@ def main():
                 
             csv_candidates = [temp_csv]
             
-            # File Suffix Builder
             clean_filename = lambda s: re.sub(r'[^A-Za-z0-9_]', '', s).replace(':', 'AND')
             suffix_parts = ["_OR_".join(clean_filename(t.upper()) for t in block) for block in inc_blocks]
             suffix_parts += [f"NO_{clean_filename(k.upper())}" for k in exc_keys]
@@ -201,7 +190,16 @@ def main():
             engine_choice = input("    -> Enter 1 or 2: ").strip()
             if engine_choice in ['1', '2']: break
             
-        engine_script = "multimer_core_engine.R" if engine_choice == '1' else "erbb_asymmetric_engine.R"
+        if engine_choice == '2':
+            print("\n" + "="*75)
+            print(" [!] Asymmetric Dimer (ERBB) Engine: UNDER CONSTRUCTION")
+            print("     Module 2 receptor-family (ERBB) analysis is not yet released.")
+            print("="*75)
+            if os.path.exists(temp_list_path): os.remove(temp_list_path)
+            if os.path.exists(".temp_filtered_results.csv"): os.remove(".temp_filtered_results.csv")
+            sys.exit(0)
+
+        engine_script = "multimer_core_engine.R"
         
         if engine_choice == '1':
             while True:
@@ -281,6 +279,15 @@ def main():
         group_col = "Macro_State" if comp_mode == '1' else ("Group_Name" if "Group_Name" in headers else "Condition")
         available_targets = get_unique_values(csv_path, group_col)
         
+        print("\n[?] Select Effect Size Metric for Phase 8 Volcano Plots:")
+        print("    1. Cohen's d (Parametric, standard but assumes normality)")
+        print("    2. Rank-Biserial Correlation (Non-parametric, robust)")
+        while True:
+            eff_choice = input("    -> Enter 1 or 2 [Default: 2]: ").strip()
+            if not eff_choice: eff_choice = '2'
+            if eff_choice in ['1', '2']: break
+        eff_metric_arg = "cohens_d" if eff_choice == '1' else "wilcox"
+
         mode = input("\n[?] Mode: (1) Lazy (Auto-run all) (2) Sequential (3) Manual -> ").strip()
         
         pairs_to_run =[]
@@ -306,7 +313,7 @@ def main():
         for state_a, state_b in pairs_to_run:
             print(f"    -> Running Phase 8 comparison: {state_a.replace('@', ' | ')} vs {state_b.replace('@', ' | ')}")
             result = subprocess.run(["Rscript", os.path.join("modules", "posthoc_differentiate.R"), 
-                                     base_dir, state_a.replace('\n', '___'), state_b.replace('\n', '___'), group_col],
+                                     base_dir, state_a.replace('\n', '___'), state_b.replace('\n', '___'), group_col, eff_metric_arg],
                                      stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
             if result.returncode == 0: success_count += 1
             else: print(f"       [!] Warning: Data might be too sparse for this plot.")
@@ -316,3 +323,4 @@ def main():
 if __name__ == "__main__":
     try: main()
     except KeyboardInterrupt: sys.exit(0)
+
