@@ -1,9 +1,9 @@
-# KINOME Allostery HMM Pipeline (Part 1 v7r2)
+# KINOME Allostery HMM Pipeline (Part 1 v7r3)
 
 This pipeline automates the extraction, sequence alignment, and structural analysis of kinase protein simulations (AlphaFold 3 or MD). It is optimized for batch processing large sets of simulations, such as combinatorial mutant matrices (e.g., 4x8 EGFR/ERBB variants) and single-protein runs (e.g., ABL1 wild-type).
 
 ## Project Goal
-This pipeline extends kinase structural analysis from a family-specific approach (originally developed for ERBB-family dimers) to a broad range of KINOME-wide kinases using HMMER profile alignment. So far, tested in CDK1 (with or without Cyclin B1 and key phosphorylation), SRC-CSK heterodimer, the ERBB family members, ABL, FAK, JAK2, and PKA catalytic subunit. Part 1 is orchestrated by the wrapper 'run_kinase_pipeline_v7r2.py', while Part 2 is orchestrated by another wrapper 'run_allostery_discovery_v7r1.py' (not detailed in this README).
+This pipeline extends kinase structural analysis from a family-specific approach (originally developed for ERBB-family dimers) to a broad range of KINOME-wide kinases using HMMER profile alignment. So far, tested in CDK1 (with or without Cyclin B1 and key phosphorylation), SRC-CSK heterodimer, the ERBB family members, ABL, FAK, JAK2, and PKA catalytic subunit. Part 1 is orchestrated by the wrapper 'run_kinase_pipeline_v7r3.py', while Part 2 is orchestrated by another wrapper 'run_allostery_discovery_v7r1.py' (not detailed in this README).
 
 ## Pipeline Capabilities & Evolution
 
@@ -13,12 +13,21 @@ This pipeline extends kinase structural analysis from a family-specific approach
    * *Allosteric Networks:* Quantifies the K105 toggle switch (sensing active vs. apo states), the αE helix anchor (Y156-N99), and the rigid deep αF-helix scaffold (D220).
 2. **Visual Alignments (1D):** Automatically generates publication-ready Multiple Sequence Alignment (MSA) text panels and abstract 1D topological schematics mapping structural motifs perfectly to sequence coordinates.
 
-**Recent Upgrades (v7r2):** 
+**Upgrades (v7r2):** 
 1. **Universal Steric Co-Factor Integration:** Seamless integration and structural tracking of non-kinase co-factors (e.g., CDK-Cyclin). The pipeline now preserves non-kinase chains and maps their steric influence on the kinase αC-helix and Activation Loop.
 2. **AlphaFold 3 Confidence Metrics:** Parallel extraction of AF3 predicted align errors (PAE) and template modeling scores (ipTM/pTM), automatically merged with the geometric data into a singular master CSV dataset.
 3. **Parallel Execution Engine:** Massive speed improvements for high-throughput batch runs. Both sequence extraction (`extract_fasta.py`) and ChimeraX structural analysis now utilize an orchestrator/worker multiprocessing architecture. You can control this via the `-c` or `--cores` flag.
 4. **Smart Filtering:** The pipeline automatically detects AF3 nested seeds (e.g., `seed-m_sample-n/model.cif`) and safely excludes redundant top-level `*_model.cif` summary files, preventing duplicate processing and skewed datasets.
 5. **Expanded Catalytic & Ligand Tracking:** Explicit distance tracking for ATP and Magnesium coordination. Calculates critical distances for HRD-Asp to ATP, DFG-Asp to Mg/ATP, and P-Loop to ATP.
+
+**Corrections (v7r3, 2026-07-29) — these change reported values:**
+
+Prompted by a concordance check against [Kincore-standalone](http://dunbrack.fccc.edu/kincore/) (Dunbrack lab) on PDB 3D7T. **v7r2 outputs are not reproduced by v7r3; re-run any dataset before comparing across versions.** All three corrections are in the ChimeraX worker.
+1. **`D1_Dist` anchor corrected (affects `Spatial` and `State`).** Modi & Dunbrack define D1 as dist(αC-Glu(+4) CA, DFG-Phe CZ). v7r2 measured from the αC-Glu *itself* while still applying the published 11/14 Å cutoffs, which are calibrated on the (+4) anchor. That compressed D1's dynamic range, put the 11 Å cut mid-distribution, inflated the fall-through `Outlier` class, and could report a true DFG-out as DFG-inter. Verified on 3D7T: D1 is now 4.85 Å (CSK) / 12.81 Å (SRC), matching Kincore exactly. `D2_Dist` was already correct and is unchanged.
+2. **`ActLoop_CT` anchor corrected.** v7r2 used HRD+6, which is not a conserved position (an Arg in CSK but an Ala in SRC). The C-terminal contact partner is the HRD arginine, HRD+1, as in Modi & Dunbrack's APE9-Arg contact. The 5.5 Å all-atom cutoff is retained as this pipeline's own sensitivity choice (Kincore uses 6.0 Å).
+3. **Missing-density guard for `ActLoop_NT` / `ActLoop_CT`.** Landmark indices address the *resolved*-residue list, so a disordered activation loop was invisible to index arithmetic and v7r2 silently measured across the gap. Offsets are now validated against deposited residue numbering and yield `N/A` when broken. No effect on AlphaFold 3 models (complete chains); it matters for experimental structures.
+
+`Dihedral`, `D2_Dist`, `SB_Dist` and every other column are unchanged. The v7r2 wrapper and worker are **retained unmodified** alongside the v7r3 ones so prior results stay reproducible; the two wrappers are otherwise identical apart from the version strings in the module they call and the output filenames.
 
 ## Getting Started
 
@@ -37,12 +46,20 @@ pip install -r requirements.txt
 ```
 *(This installs `biopython`, `pandas`, `pyyaml`, and `matplotlib`. The multiprocessing features utilize standard built-in Python libraries.)*
 
-### 3. The Two-Stage Workflow
+### 3. Deployment
+The wrapper resolves `modules/` relative to the **current working directory**, so copy the wrapper and the `modules/` folder from `scripts/` into the directory that holds your simulation folders, and run it there:
+```bash
+cp scripts/run_kinase_pipeline_v7r3.py /path/to/simulations/
+cp -r scripts/modules /path/to/simulations/
+cd /path/to/simulations/
+```
+
+### 4. The Two-Stage Workflow
 
 #### Stage A: Discovery & Audit
 Scan your current directory for simulation folders:
 ```bash
-python3 run_kinase_pipeline_v7r2.py
+python3 run_kinase_pipeline_v7r3.py
 ```
 * The script safely ignores non-simulation folders (like `modules/` or `archives/`).
 * It strictly reads your folder names (e.g., `a-erbb2cattail_b-egfrcattail-t790m`) and generates a `generated_matrix.csv` manifest.
@@ -51,56 +68,83 @@ python3 run_kinase_pipeline_v7r2.py
 #### Stage B: Parallel Analysis & Visualization
 Resume the pipeline after verification, specifying the number of CPU cores to utilize:
 ```bash
-python3 run_kinase_pipeline_v7r2.py --resume -c 16
+python3 run_kinase_pipeline_v7r3.py --resume -c 16
 ```
 The pipeline automatically handles:
-1. **Archiving**: Moves any previous results to a timestamped folder in `archives/` to prevent data mixing.
+1. **Archiving**: Moves any previous results to a timestamped folder in `archives/` to prevent data mixing. (`--no-archive` skips this.)
 2. **Setup**: Generates `proteins.yaml` and extracts `sequences.fasta` via parallel workers.
 3. **Landmark Mapping**: Aligns sequences against the HMM profile to generate `hmm_landmarks.json`.
 4. **1D Sequence Visualizations**: Generates `MSA_Annotated_Panel.pdf` and individual topological schematics (`kinome_VISalign.py`).
 5. **3D Structural Execution**: Spawns parallel headless ChimeraX instances to extract 3D measurements.
 6. **AF3 Metric Extraction**: Parses AF3 JSON files to compile PAE and ipTM confidence scores.
-7. **Final Consolidation**: Merges geometric output and AF3 metrics into `master_kinase_analysis_results_v7r2.csv`.
+7. **Final Consolidation**: Merges geometric output and AF3 metrics into `master_kinase_analysis_results_v7r3.csv`.
 
-### 4. Advanced: Custom Entry Points
+### 5. Advanced: Custom Entry Points
 If you already have a curated configuration or sequence file, you can bypass the discovery stages.
 
 * **Start from YAML (--use-yaml)**:
 ```bash
-python3 run_kinase_pipeline_v7r2.py --use-yaml -c 8
+python3 run_kinase_pipeline_v7r3.py --use-yaml -c 8
 ```
 * **Start from FASTA (--use-fasta)**:
 ```bash
-python3 run_kinase_pipeline_v7r2.py --use-fasta -c 8
+python3 run_kinase_pipeline_v7r3.py --use-fasta -c 8
 ```
+Use `-n / --max-chains` to declare the total number of chains per structure (kinases + co-factors).
 
 ## Utilities & Troubleshooting
-* **`debug_landmarks.py`**: Run `python3 modules/debug_landmarks.py sequences.fasta` to print a terminal table verifying the exact amino acid letters matching your extracted HMM coordinate indices.
 * **`make_bingo.py`**: Generate conditional association matrices and isolate single-variable changes across complex simulation datasets. 
 
 ## Outputs
-* `master_kinase_analysis_results_v7r2.csv`: Comprehensive master dataset for all analyzed chains. Includes spatial/dihedral states, AlphaFold 3 confidences (`ipTM`, `PAE`), Co-factor proximity mapping, Allosteric nodes (`Y156_N99_Dist`, `K105_E107_Dist`), and Ligand metrics (`HRD_ATP_Dist`, `DFG_Mg_Dist`).
+* `master_kinase_analysis_results_v7r3.csv`: Comprehensive master dataset for all analyzed chains. Includes spatial/dihedral states, AlphaFold 3 confidences (`ipTM`, `PAE`), Co-factor proximity mapping, Allosteric nodes (`Y156_N99_Dist`, `K105_E107_Dist`), and Ligand metrics (`HRD_ATP_Dist`, `DFG_Mg_Dist`). **Every column is defined in `docs/AlloQuant_master_CSV_data_dictionary_v7r3.xlsx`.**
 * `MSA_Annotated_Panel.pdf`: Wrapped, monospaced sequence alignment visually mapped to canonical landmarks and structural topology tracks.
 * `[sequence_name]_schematic.pdf`: Individual 1D abstract topologies showing N/C-lobes, helices, sheets, and catalytic loop positioning.
 * **Visualization Directories:**
   * `cx_viz_core/`: `.cxc` ChimeraX macros isolating the catalytic core, R/C-Spines, Salt Bridge, and Hydrophobic Shell.
   * `cx_viz_allosteric/`: `.cxc` ChimeraX macros isolating the αC-β4 toggle switch, αE anchor, and αF scaffold.
 
-## Project Structure
+Every file either stage emits is listed in `docs/AlloQuant_output_file_manifest_v7r3.xlsx`.
+
+## Documentation
+* **`docs/AlloQuant_master_CSV_data_dictionary_v7r3.{xlsx,pdf}`** — the master-CSV schema, column by column: group, type, units, when populated, allowed values, the empirical range/distribution in the reference run, and the measurement rule behind each value. The v7r2 edition is retained for anyone holding v7r2 output.
+* **`docs/AlloQuant_output_file_manifest_v7r3.{xlsx,pdf}`** — every file the two modules emit, by stage and phase, with a description and a presence check against the reference run.
+* **`METRICS_CHEATSHEET.md`** — the biological meaning of each measurement, how it is plotted, and why some distances differ from the dashed lines drawn in the ChimeraX `.cxc` visuals.
+
+## Repository Layout
+```text
+.
+├── README.md
+├── METRICS_CHEATSHEET.md              # Metric -> biology -> plot -> 3D mapping
+├── LICENSE
+├── requirements.txt
+├── scripts/
+│   ├── run_kinase_pipeline_v7r3.py    # Part 1 entry point (current)
+│   ├── run_kinase_pipeline_v7r2.py    # retained for reproducibility
+│   ├── run_allostery_discovery_v7r1.py# Part 2 entry point (allostery discovery)
+│   └── modules/
+│       ├── generate_config.py
+│       ├── extract_fasta.py                    # Parallel FASTA extraction
+│       ├── extract_landmarks.py                # HMM-based structural mapping
+│       ├── kinome_VISalign.py                  # 1D schematics and MSA plotting
+│       ├── 1_run_parallel_chimerax_hmm_v7r3.py # Parallel orchestrator (current)
+│       ├── chimerax_hmm_worker_v7r3.py         # Headless 3D geometry (current)
+│       ├── 1_run_parallel_chimerax_hmm_v7r2.py # retained
+│       ├── chimerax_hmm_worker_v7r2.py         # retained
+│       ├── extract_af3_metrics.py              # Extracts ipTM and PAE metrics
+│       ├── make_bingo.py                       # Statistical crossover matrix generator
+│       ├── multimer_core_engine.R               # Part 2 statistics/plots engine
+│       └── posthoc_differentiate.R              # Part 2 post-hoc differentiation
+├── addons/                            # Post-hoc analyses (see addons/README.md)
+├── docs/                              # Data dictionary + output-file manifest
+└── figures/                           # Manuscript figure scripts (see figures/README.md)
+```
+
+## Runtime Working Directory
+This is what the directory you *run* the pipeline in looks like, before and after execution:
 ```text
 . (Working Directory)
-├── run_kinase_pipeline_v7r2.py        # Main entry point orchestrator
-├── requirements.txt                   # Python package dependencies
-├── modules/                           # Core logic directory
-│   ├── generate_config.py
-│   ├── extract_fasta.py               # Parallel FASTA extraction
-│   ├── extract_landmarks.py           # HMM-based structural mapping
-│   ├── kinome_VISalign.py             # 1D Schematics and MSA plotting
-│   ├── debug_landmarks.py             # Verification utility for HMM mapping
-│   ├── 1_run_parallel_chimerax_hmm_v7r2.py
-│   ├── chimerax_hmm_worker_v7r2.py    # Headless 3D geometric calculations
-│   ├── extract_af3_metrics.py         # Extracts ipTM and PAE metrics
-│   └── make_bingo.py                  # Statistical crossover matrix generator
+├── run_kinase_pipeline_v7r3.py        # Copied from scripts/
+├── modules/                           # Copied from scripts/
 ├── a-erbb2_b-egfr.../                 # Input simulation directories (.cif/.pdb)
 │
 │   # --- Pipeline Generated Outputs (Created during execution) ---
@@ -110,8 +154,8 @@ python3 run_kinase_pipeline_v7r2.py --use-fasta -c 8
 ├── sequences.fasta                    # Extracted sequence FASTA
 ├── hmm_landmarks.json                 # HMM mapped canonical/allosteric residues
 ├── temp_af3_metrics.csv               # Temporary extracted confidence metrics
-├── hmm_kinase_analysis_results_v7r2.csv # Temporary geometric measurements
-├── master_kinase_analysis_results_v7r2.csv # Final merged dataset (Geometry + AF3)
+├── hmm_kinase_analysis_results_v7r3.csv    # Temporary geometric measurements
+├── master_kinase_analysis_results_v7r3.csv # Final merged dataset (Geometry + AF3)
 ├── MSA_Annotated_Panel.pdf            # Unified MSA structural annotation graphic
 ├── [kinase]_schematic.pdf             # Individual 1D topology maps
 ├── cx_viz_core/                       # 3D macros for the catalytic core (.cxc)
@@ -122,6 +166,7 @@ python3 run_kinase_pipeline_v7r2.py --use-fasta -c 8
 
 ## References
 1. **Kinase Classification:** Modi, V., & Dunbrack, R. L., Jr (2019). "Defining a new nomenclature for the structures of active and inactive kinases." *PNAS*, 116(14), 6818-6827.
-2. **Hydrophobic Core:** Kim, J. et al. (2017) "A dynamic hydrophobic core orchestrates allostery in protein kinases," *Science Advances*, 3(4). doi: 10.1126/sciadv.1600663.
-3. **DFG-in/out Conformational Coupling:** Levinson, N. M. et al. (2006). "A Src-like inactive conformation in the abl tyrosine kinase domain." *PLoS Biology*, 4(5), e144.
-4. **αC-β4 Loop Allostery:** Wu, J., Jonniya, N. A., et al. (2024). "Role of the aC-b4 loop in protein kinase structure and dynamics." *eLife*. doi: 10.7554/eLife.91980
+2. **Kinase Conformational Reference:** Modi, V., & Dunbrack, R. L., Jr (2022). "Kincore: a web resource for structural classification of protein kinases and their inhibitors." *Nucleic Acids Research*, 50(D1), D654-D664. doi: 10.1093/nar/gkab920
+3. **Hydrophobic Core:** Kim, J. et al. (2017) "A dynamic hydrophobic core orchestrates allostery in protein kinases," *Science Advances*, 3(4). doi: 10.1126/sciadv.1600663.
+4. **DFG-in/out Conformational Coupling:** Levinson, N. M. et al. (2006). "A Src-like inactive conformation in the abl tyrosine kinase domain." *PLoS Biology*, 4(5), e144.
+5. **αC-β4 Loop Allostery:** Wu, J., Jonniya, N. A., et al. (2024). "Role of the aC-b4 loop in protein kinase structure and dynamics." *eLife*. doi: 10.7554/eLife.91980
