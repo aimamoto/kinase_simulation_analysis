@@ -17,7 +17,7 @@ s=pd.read_csv(f"{BASE}/plots_and_stats_SRC_GMM/Phase7_Complete_Structural_Metada
 
 # element -> (display label, module)  module: 'spine' regulatory-spine cluster, 'cat' catalytic/active-site
 ELEMENTS=[
- ("K105_E121_Dist","β3K–αCE (K105–E121)","spine"),
+ ("K105_E121_Dist","αC-loop (K105–E121)","spine"),
  ("V104_RS2_Dist","R-spine (V104–RS2)","spine"),
  ("Shell_M118_M120_Dist","Reg. shell (M118–M120)","spine"),
  ("Spine_Bridge_Dist","Spine bridge","spine"),
@@ -99,7 +99,7 @@ def draw(ax,col,lab):
     pstr = "p<10⁻¹⁵" if pv<1e-15 else f"p={pv:.0e}"
     ax.text(0.04,0.80,f"ρ={rho:.2f}, {pstr}",transform=ax.transAxes,fontsize=P.TS["small"],va="top",color=P.RED_D)
     ax.tick_params(labelsize=P.TS["small"])
-draw(axB1,"K105_E121_Dist","β3K–αCE network")
+draw(axB1,"K105_E121_Dist","K105–E121 αC-loop network")
 axB1.text(-0.28,1.045,"B",transform=axB1.transAxes,fontsize=P.TS["panel"],fontweight="bold",va="bottom",ha="left")
 axB1.text(0.5,1.045,"Within-condition co-variation",transform=axB1.transAxes,fontsize=P.TS["axlabel"],fontweight="bold",va="bottom",ha="center")
 draw(axB2,"V104_RS2_Dist","R-spine")
