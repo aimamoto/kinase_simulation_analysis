@@ -34,7 +34,7 @@ FONT_STACK = ["Liberation Sans", "Arial", "Noto Sans", "DejaVu Sans"]
 
 # Main-figure type scale (pt) — nothing below ~7.5 at final print size
 TS = dict(base=9.5, title=10.5, axlabel=10.5, tick=8.5, legend=8.5,
-          panel=14, anno=7.5, value=8.0, small=7.5)
+          panel=14, anno=7.5, anno_big=10, value=8.0, small=7.5)
 
 def apply_rc(mpl):
     mpl.rcParams.update({

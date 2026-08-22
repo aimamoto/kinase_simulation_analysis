@@ -46,11 +46,11 @@ interpreting any monomer-vs-dimer contrast (e.g. CDK1 apo monomer vs CDK1-CCNB1)
 
 Usage
 -----
-  # CSK-SRC (confidence lives in the 260718 rerun directory)
+  # CSK-SRC. $ALLOQUANT_SRC is the CSK-SRC output dir; note that ipTM/pTM/PAE are
+  # populated only in the rerun of that pipeline, not in the original 260606 run.
   python3 addons/mac_confidence_control.py \
       --metadata plots_and_stats_CSK_GMM/Phase7_Complete_Structural_Metadata.csv \
-      --confidence /media/akira/argentee/structure/SRC/af3_output/\
-260718_rerun_260606_v7_csk-src/master_kinase_analysis_results_v7r2.csv \
+      --confidence $ALLOQUANT_SRC/master_kinase_analysis_results_v7r3.csv \
       --label CSK --out-dir addons/mac_confidence_out
 
   # intrinsic (per-state) MAC instead of per-condition
@@ -58,9 +58,8 @@ Usage
 
   # CDK1-CCNB1 (confidence is already in its own master table)
   python3 addons/mac_confidence_control.py \
-      --metadata <CDK1 Phase7 metadata csv> \
-      --confidence /media/akira/argentee/structure/CDK1/af3_output/\
-260517_CDK1-CCNB1/master_kinase_analysis_results_v7r2.csv \
+      --metadata $ALLOQUANT_CDK1/plots_and_stats_CDK1_GMM/Phase7_Complete_Structural_Metadata.csv \
+      --confidence $ALLOQUANT_CDK1/master_kinase_analysis_results_v7r3.csv \
       --label CDK1 --out-dir addons/mac_confidence_out
 """
 

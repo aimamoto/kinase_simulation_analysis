@@ -5,8 +5,11 @@ pipeline. These are intentionally **kept separate from `modules/` and the wrappe
 not modify or depend on the core pipeline internals, and the core pipeline runs identically
 whether or not they are present.
 
-Both add-ons are argparse-driven and non-interactive. Paths below are written relative to a
-pipeline output directory (the one holding `plots_and_stats_*/`).
+The two general-purpose add-ons (`paired_chain_coupling.py`, `mac_confidence_control.py`) are
+argparse-driven and non-interactive. The four manuscript-specific controls added below them read
+their inputs from the `ALLOQUANT_*` environment variables documented in `figures/README.md`.
+Paths below are written relative to a pipeline output directory (the one holding
+`plots_and_stats_*/`).
 
 ## `paired_chain_coupling.py` — cross-chain conformational coupling
 
@@ -94,4 +97,68 @@ covariate distributions themselves), and `{label}_mac_raw_vs_partial.png` (diagn
 MAC fall for **every** group. That is arithmetic, not evidence of weakening. The claim under test
 is that the *between-condition contrast* survives: direction preserved and still significant.
 
-**Provenance:** used for the manuscript's confidence-control supplementary note, tables and figure.
+**Provenance:** used for the manuscript's confidence-control supplementary note, tables and
+figure; its output directory is what `figures/figSI_confidence.py` reads.
+
+## The composition control — `csk_mac_by_condition.py`, `cdk1_mac_decompose.py`, `cdk1_matched_panel.py`
+
+Global (condition-level) MAC is one correlation network built across all of a condition's models,
+so it responds to the condition's **state composition** as well as to the coupling *within* its
+states: pooling models from structurally distinct metastable states induces correlation among
+every metric that separates them. These three scripts decompose a global-MAC difference into
+those two contributions. They are the code behind the manuscript's composition control.
+
+* **`csk_mac_by_condition.py`** — for each of the four biological CSK conditions, fix that
+  condition's own global-MAC metric panel, then recompute the same statistic separately within
+  each occupied metastable state **on that fixed panel**, so the per-state values are
+  panel-matched to the condition's own bar. Reproduces the pipeline's
+  `Phase5_Global_Network_Density.csv` values as a check, and writes
+  `csk_mac_by_condition.csv`, which `figures/fig4_model2.py` reads for Figure 4 panel A.
+  States with fewer than 8 models are reported but not emitted.
+* **`cdk1_mac_decompose.py`** — the same decomposition applied to CDK1, testing whether the
+  CDK1 "thaw" survives it. It does: the thaw is overwhelmingly a within-state coupling change.
+* **`cdk1_matched_panel.py`** — checks the CDK1 result is not an artefact of comparing different
+  metric panels, by recomputing each contrast on the metrics viable in **both** of its
+  conditions. Replicates the R engine's semantics exactly, including the fact that R *retains*
+  zero-variance columns (their correlations become NA, then 0, dragging MAC down) — do not
+  "fix" that by dropping them.
+
+Note the small-sample floor: the expected mean |ρ| between independent variables is
+`sqrt(2 / (pi * (n - 1)))`, so every per-state value is inflated in absolute terms and is only
+meaningful as a matched comparison between conditions.
+
+**Run:**
+```bash
+ALLOQUANT_SRC=/path/to/csk-src_output  python addons/csk_mac_by_condition.py
+ALLOQUANT_CDK1=/path/to/cdk1_output    python addons/cdk1_mac_decompose.py
+ALLOQUANT_CDK1=/path/to/cdk1_output ALLOQUANT_SRC=/path/to/csk-src_output \
+    python addons/cdk1_matched_panel.py
+```
+`ALLOQUANT_CSK_MAC_CSV` sets where `csk_mac_by_condition.py` writes its CSV (default:
+`csk_mac_by_condition.csv` in the current directory). The two CDK1 scripts print their tables
+to stdout and write nothing.
+
+**Provenance:** this control is independent of `mac_confidence_control.py` above, which
+addresses prediction confidence and says nothing about composition.
+
+## `iface_py419.py` — does SRC pY419 change the docking interface?
+
+A direct, assumption-free measurement on the AF3 ensembles rather than on pipeline summaries:
+reads each `model.cif` with `gemmi` and computes inter-chain contacts, buried surface area
+(numerical Shrake–Rupley with a 92-point sphere), polar bridges, and per-residue-pair contact
+frequency, for four conditions spanning the unprimed/primed and CSK-apo/CSK-holo contrasts.
+
+**Run:**
+```bash
+ALLOQUANT_SRC=/path/to/csk-src_output python addons/iface_py419.py
+```
+Writes `analysis_iface_py419.json` (override with `ALLOQUANT_IFACE_JSON`), which
+`figures/figSI_interface.py` reads. It walks every model of four conditions, so expect it to
+take a while.
+
+**Interpretation note.** The displacements it finds are small enough to need a resolution check
+before they can be called real: compare them against AlphaFold3's own predicted aligned error at
+the same residue pairs. In the manuscript they come to a few percent of the per-pair PAE, which
+is why the conclusion is "below resolution" rather than "invariant".
+
+**Provenance:** Supplementary Note 8.

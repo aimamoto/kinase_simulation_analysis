@@ -25,6 +25,7 @@ import palette as P
 P.apply_rc(matplotlib)
 
 BASE=os.environ.get("ALLOQUANT_SRC", "CSK-SRC_output")  # AlloQuant CSK-SRC output dir
+OUTDIR = os.environ.get("ALLOQUANT_FIGDIR", ".")  # rendered-figure output dir
 c=pd.read_csv(f"{BASE}/plots_and_stats_CSK_GMM/Phase7_Complete_Structural_Metadata.csv")
 s=pd.read_csv(f"{BASE}/plots_and_stats_SRC_GMM/Phase7_Complete_Structural_Metadata.csv")
 
@@ -157,7 +158,7 @@ axB2.set_xlabel("SRC element  (Å, condition-centered)",fontsize=P.TS["small"])
 for ax in (axB1,axB2): ax.set_ylabel("CSK  (Å, cent.)",fontsize=P.TS["small"])
 
 for ext in ("png","pdf"):
-    fig.savefig(f"Figure5_CSK_SRC_coupling.{ext}",dpi=300 if ext=="png" else None,bbox_inches="tight")
+    fig.savefig(f"{OUTDIR}/Figure5_CSK_SRC_coupling.{ext}",dpi=300 if ext=="png" else None,bbox_inches="tight")
 print("saved Figure5_CSK_SRC_coupling.{png,pdf}")
 print(f"n = {len(p)} paired models, {len(conds)} conditions, covars = {COVARS}")
 print(res[["lab","mod","rho","p","fdr","k"]].to_string(index=False))

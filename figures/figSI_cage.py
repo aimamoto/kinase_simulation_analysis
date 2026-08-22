@@ -6,11 +6,12 @@ import matplotlib.pyplot as plt, matplotlib.image as mpimg
 import numpy as np, glob, gemmi, sys
 import scipy.stats as st
 from PIL import Image
-import os, sys; sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import os; sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import palette as P
 P.apply_rc(matplotlib)
 BASE=os.environ.get("ALLOQUANT_CDK1", "CDK1-CCNB1_output")  # AlloQuant CDK1-CCNB1 output dir
 S=os.environ.get("ALLOQUANT_STRUCT", "struct/")  # ChimeraX-rendered structural panels
+OUTDIR = os.environ.get("ALLOQUANT_FIGDIR", ".")  # rendered-figure output dir
 
 def dists(cond, r14name, r14atoms):
     out=[]
@@ -87,6 +88,6 @@ fig.text(0.05,0.28,
     f"exact on <4 Å, p = {p_f_s}). Mg²⁺ stays coordinated;\n"
     "pY15 points away.",
     color=P.INK,fontsize=10,ha="left",va="top",linespacing=1.5)
-fig.savefig("figSI_cage.png",dpi=200,facecolor="white")
-fig.savefig("figSI_cage.pdf",facecolor="white")
+fig.savefig(f"{OUTDIR}/figSI_cage.png",dpi=200,facecolor="white")
+fig.savefig(f"{OUTDIR}/figSI_cage.pdf",facecolor="white")
 print(f"wrote figSI_cage white  triple-P {pct_tp:.0f}%<4A n={n_tp}; active {pct_ac:.0f}%<4A n={n_ac}")

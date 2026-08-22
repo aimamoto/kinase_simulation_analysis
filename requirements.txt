@@ -9,5 +9,21 @@ PyYAML>=6.0.1
 # For merging worker CSV outputs in the parallel orchestrator
 pandas>=2.0.0
 
-# (Note: numpy is used by the ChimeraX worker script, but ChimeraX 
+# (Note: numpy is used by the ChimeraX worker script, but ChimeraX
 # bundles its own Python environment and numpy automatically.)
+
+# --- addons/ and figures/ only ---------------------------------------------
+# The core pipeline does not need these; they are required to run the post-hoc
+# analyses in addons/ and to re-render the manuscript figures in figures/.
+
+# Statistics in both (Spearman/partial correlations, Mann-Whitney, Kruskal-Wallis)
+numpy>=1.24.0
+scipy>=1.10.0
+
+# Figure rendering, and compositing the pre-rendered ChimeraX panels
+matplotlib>=3.7.0
+Pillow>=9.5.0
+
+# Direct atom-level measurement on model.cif
+# (figures/figSI_cage.py, addons/iface_py419.py)
+gemmi>=0.6.0
