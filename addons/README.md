@@ -100,7 +100,7 @@ is that the *between-condition contrast* survives: direction preserved and still
 **Provenance:** used for the manuscript's confidence-control supplementary note, tables and
 figure; its output directory is what `figures/figSI_confidence.py` reads.
 
-## The composition control — `csk_mac_by_condition.py`, `cdk1_mac_decompose.py`, `cdk1_matched_panel.py`
+## The composition control — `csk_mac_by_condition.py`, `mac_nmatched_control.py`, `cdk1_mac_decompose.py`, `cdk1_matched_panel.py`
 
 Global (condition-level) MAC is one correlation network built across all of a condition's models,
 so it responds to the condition's **state composition** as well as to the coupling *within* its
@@ -113,8 +113,9 @@ those two contributions. They are the code behind the manuscript's composition c
   each occupied metastable state **on that fixed panel**, so the per-state values are
   panel-matched to the condition's own bar. Reproduces the pipeline's
   `Phase5_Global_Network_Density.csv` values as a check, and writes
-  `csk_mac_by_condition.csv`, which `figures/fig4_model2.py` reads for Figure 4 panel A.
-  States with fewer than 8 models are reported but not emitted.
+  `csk_mac_by_condition.csv`. These are the per-state values tabulated in the supplement.
+  States with fewer than 8 models are reported but not emitted. (Up to 2026-08-24 this CSV also
+  fed a per-state overlay on Figure 4 panel A; that overlay was removed, see below.)
 * **`cdk1_mac_decompose.py`** — the same decomposition applied to CDK1, testing whether the
   CDK1 "thaw" survives it. It does: the thaw is overwhelmingly a within-state coupling change.
 * **`cdk1_matched_panel.py`** — checks the CDK1 result is not an artefact of comparing different
@@ -123,19 +124,39 @@ those two contributions. They are the code behind the manuscript's composition c
   zero-variance columns (their correlations become NA, then 0, dragging MAC down) — do not
   "fix" that by dropping them.
 
+* **`mac_nmatched_control.py`** — tests whether a state is *less coupled than the ensemble it
+  sits in*, which the floor below cannot answer. Each state is compared with 2000 random subsets
+  of its own condition **at that state's own sample size**, state labels ignored, and reports the
+  departure in null standard deviations. In the primed CSK condition every state falls short of
+  its size-matched expectation and the occupancy-weighted value falls 0.091 below it; the
+  both-ATP baseline is null. So conditioning on state removes the whole of the pooled rise in
+  the primed condition and none of it in the baseline.
+
 Note the small-sample floor: the expected mean |ρ| between independent variables is
-`sqrt(2 / (pi * (n - 1)))`, so every per-state value is inflated in absolute terms and is only
-meaningful as a matched comparison between conditions.
+`sqrt(2 / (pi * (n - 1)))` — 0.080 at n = 100, 0.125 at 42, 0.216 at 15 — so every per-state
+value is inflated in absolute terms and is only meaningful as a matched comparison.
+
+**That floor is the wrong reference for the composition question.** It is the expectation for
+*independent* variables, which establishes whether a cell carries information at all. A random
+subset of a *mixed* condition inherits the mixture's own induced correlation and sits far above
+it: 0.257 against a floor of 0.125 at n = 42 in the primed condition. Use
+`mac_nmatched_control.py` for that comparison, not the floor.
+
+The same *n* dependence is why Figure 4 panel A no longer overlays per-state values on the
+pooled bars: values at n = 15-45 and n = 100 do not belong on one linear axis.
 
 **Run:**
 ```bash
 ALLOQUANT_SRC=/path/to/csk-src_output  python addons/csk_mac_by_condition.py
+ALLOQUANT_SRC=/path/to/csk-src_output  python addons/mac_nmatched_control.py
 ALLOQUANT_CDK1=/path/to/cdk1_output    python addons/cdk1_mac_decompose.py
 ALLOQUANT_CDK1=/path/to/cdk1_output ALLOQUANT_SRC=/path/to/csk-src_output \
     python addons/cdk1_matched_panel.py
 ```
-`ALLOQUANT_CSK_MAC_CSV` sets where `csk_mac_by_condition.py` writes its CSV (default:
-`csk_mac_by_condition.csv` in the current directory). The two CDK1 scripts print their tables
+`ALLOQUANT_CSK_MAC_CSV` and `ALLOQUANT_CSK_NMATCHED_CSV` set where `csk_mac_by_condition.py`
+and `mac_nmatched_control.py` write their CSVs (defaults: `csk_mac_by_condition.csv` and
+`csk_mac_nmatched.csv` in the current directory). `mac_nmatched_control.py` is seeded, so it
+reproduces exactly. The two CDK1 scripts print their tables
 to stdout and write nothing.
 
 **Provenance:** this control is independent of `mac_confidence_control.py` above, which

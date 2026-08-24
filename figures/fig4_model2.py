@@ -1,9 +1,13 @@
 #!/usr/bin/env python
 """Figure 4 — Model 2 CSK-SRC handshake. Valid (thermodynamically favored, biological) conditions only.
-A: pooled MAC per condition with that condition's own per-state values overlaid. In three of the four
-conditions the state values sit ABOVE the pooled bar (mixing dilutes correlation); only in the primed
-condition do they sit below it, which is the composition effect the retraction rests on (register F7,
-T9/T11/T12). SRC stays bulk-flat, which is real. B: pY419 flips SRC state, not stiffness.
+A: pooled (condition-level) MAC only. CSK rises on priming; SRC stays bulk-flat, which is real.
+The per-state overlay added for register F7 was REMOVED 2026-08-24. MAC is strongly upward-biased at
+small n (0.08 at n=100, 0.22 at n=15), so per-state values at n=15-45 and pooled values at n=100 do
+not share a linear axis: a shared axis asserts a comparison the statistic does not license, whatever
+the legend says. Retaining it made the paper's central figure open on an apparent contradiction.
+The composition control (which is what F7 was really after, and what T9/T11/T12 rest on) now lives
+in Supplementary Note 10 and Table 7, tested against a size-matched null rather than read off a bar
+height: addons/mac_nmatched_control.py. B: pY419 flips SRC state, not stiffness.
 C: single-structure state handshake — two heatmaps (unprimed vs primed), spanning the bottom row.
 The former panel C (CSK categorical activation by condition) was retired 2026-08-01: it plotted the
 ensemble averages the Results now argue understate the mechanism. Superseded by Fig. S3B, with the
@@ -54,32 +58,24 @@ gsD = gs[1,:].subgridspec(2, 2, height_ratios=[1, 0.055], hspace=0.62, wspace=0.
 axD1, axD2 = fig.add_subplot(gsD[0,0]), fig.add_subplot(gsD[0,1])
 axDCB = fig.add_subplot(gsD[1, :])
 
-# ---- A: pooled MAC, with each condition's own per-state values overlaid ----
-# Register F7. The original plan (overlay the pipeline's per-state INTRINSIC MAC) is NOT used: intrinsic
-# MAC is anchored on 16 metrics / 120 edges while global MAC uses this condition's own 16-21 / 120-210,
-# so that overlay would be the panel-mismatched comparison the 08-03 memo forbids (its section 5).
-# Instead the network is recomputed within each occupied macro-state ON THE CONDITION'S OWN PANEL, which
-# is matched to its bar. Source: addons/csk_mac_by_condition.py -> csk_mac_by_condition.csv (run it first)
-DEC = pd.read_csv(os.environ.get("ALLOQUANT_CSK_MAC_CSV", "csk_mac_by_condition.csv"))
+# ---- A: pooled (condition-level) MAC ----
+# One claim per panel: CSK rises on priming, SRC does not. The per-state overlay is gone (see the
+# module docstring); its numbers are Supplementary Table 7, its test Supplementary Note 10.
 x = np.arange(len(CONDS)); w = 0.38
-axA.bar(x-w/2, Acsk, w, color=P.BLUE,   edgecolor=P.INK, lw=0.6, label="CSK pooled")
-axA.bar(x+w/2, Asrc, w, color=P.PURPLE, edgecolor=P.INK, lw=0.6, label="SRC pooled")
-for i, (key, _) in enumerate(CONDS):
-    d = DEC[(DEC["cond"] == key) & (DEC["kind"] == "state")].sort_values("mac").reset_index(drop=True)
-    xs = np.linspace(-0.085, 0.085, len(d)) if len(d) > 1 else np.zeros(1)
-    axA.scatter(i - w/2 + xs, d["mac"], s=8 + 0.9*d["pct"], facecolor="white",
-                edgecolor=P.BLUE_D, lw=0.85, zorder=4,
-                label="CSK single states" if i == 0 else None)
+axA.bar(x-w/2, Acsk, w, color=P.BLUE,   edgecolor=P.INK, lw=0.6, label="CSK")
+axA.bar(x+w/2, Asrc, w, color=P.PURPLE, edgecolor=P.INK, lw=0.6, label="SRC")
 axA.set_xticks(x); axA.set_xticklabels([l for _,l in CONDS], fontsize=P.TS["small"])
-axA.set_ylabel("Network rigidity (MAC)", fontsize=P.TS["small"]); axA.set_ylim(0, 0.365)
-axA.legend(frameon=False, fontsize=P.TS["small"], loc="upper left", ncol=3,
+axA.set_ylabel("Pooled network rigidity (MAC)", fontsize=P.TS["small"]); axA.set_ylim(0, 0.30)
+axA.legend(frameon=False, fontsize=P.TS["small"], loc="upper left", ncol=2,
            handletextpad=0.25, borderpad=0.0, columnspacing=0.8,
-           bbox_to_anchor=(-0.02, 1.035))
+           bbox_to_anchor=(0.01, 1.00))
 # the pY419-isolating contrast keeps its marker; the legend defines the test and the comparator
 axA.text(3-w/2, Acsk[3]+0.007, "*", ha="center", va="bottom", fontsize=P.TS["base"], color=P.BLUE_D)
 axA.plot([-0.4, 3.4], [np.mean(Asrc)]*2, ls=":", color=P.PURPLE, lw=0.9, alpha=0.7)
 axA.text(-0.34,1.045,"A",transform=axA.transAxes,fontsize=P.TS["panel"],fontweight="bold")
-axA.text(0.5,1.045,"Pooled rigidity, resolved by state",transform=axA.transAxes,fontsize=P.TS["axlabel"],fontweight="bold",ha="center")
+# NB: the title must not say "stiffens" -- that is the reading T9/T11/T12 retracted. It describes
+# the pooled statistic and nothing about coupling within states.
+axA.text(0.5,1.045,"Pooled rigidity rises for CSK only",transform=axA.transAxes,fontsize=P.TS["axlabel"],fontweight="bold",ha="center")
 
 # ---- B: SRC state redistribution ----
 Bconds=[("csk-holo/src-holo","both-ATP"),("csk-holo/src-py159-holo","+pY419")]
@@ -134,5 +130,4 @@ print("saved Figure4_CSK_SRC_handshake.{png,pdf}")
 print("A CSK:",[round(v,3) for v in Acsk],"| A SRC:",[round(v,3) for v in Asrc])
 # reported for the legend footnote; no longer annotated on the panel itself (register F7)
 print("A both-ATP vs primed p.adj:", psci(padj(stC, "csk-holo/src-holo", "csk-holo/src-py159-holo")))
-print("A per-state overlay:\n", DEC[DEC.kind=="state"][["label","state","mac","n","pct"]].to_string(index=False))
 print("D unprimed:\n",Dun.astype(int)); print("D primed:\n",Dpr.astype(int))

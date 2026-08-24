@@ -100,7 +100,6 @@ Scripts read AlloQuant pipeline outputs (`Phase*` /
 | `ALLOQUANT_STRUCT` | folder of ChimeraX-rendered structural panels (`struct/`) |
 | `ALLOQUANT_FIGDIR` | output directory for rendered figures (default: current dir) |
 | `ALLOQUANT_AF3_ROOT` | parent directory holding the AF3 run dirs (`figSI_monomer.py` only, for the 40-seed monomer runs) |
-| `ALLOQUANT_CSK_MAC_CSV` | `csk_mac_by_condition.csv` from `addons/csk_mac_by_condition.py` (`fig4_model2.py` panel A) |
 | `ALLOQUANT_MAC_CONFIDENCE_OUT` | `mac_confidence_out_v7r3/` from `addons/mac_confidence_control.py` (`figSI_confidence.py`; defaults to `$ALLOQUANT_SRC/addons/mac_confidence_out_v7r3`) |
 | `ALLOQUANT_IFACE_JSON` | `analysis_iface_py419.json` from `addons/iface_py419.py` (`figSI_interface.py`) |
 
@@ -110,9 +109,14 @@ Run each script from this directory (so `palette.py` is importable), e.g.:
 ALLOQUANT_SRC=/path/to/csk-src_output ALLOQUANT_FIGDIR=/tmp/figs python fig4_model2.py
 ```
 
-Two figures depend on an add-on being run first: Figure 4 needs
-`addons/csk_mac_by_condition.py`, and Figure S6 needs
+One figure depends on an add-on being run first: Figure S6 needs
 `addons/mac_confidence_control.py`.
+
+Figure 4 used to require `addons/csk_mac_by_condition.py` as well, for a per-state overlay on
+panel A. That overlay was removed: MAC is strongly upward-biased at small *n*, so per-state
+values (n = 15-45) and pooled values (n = 100) cannot share a linear axis. Panel A now plots
+pooled MAC only and needs no add-on. The per-state decomposition lives in the supplement, and
+`addons/mac_nmatched_control.py` is the control that tests it.
 
 ## Note on the structural panels
 
