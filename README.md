@@ -27,7 +27,7 @@ Prompted by a concordance check against [Kincore-standalone](http://dunbrack.fcc
 2. **`ActLoop_CT` anchor corrected.** v7r2 used HRD+6, which is not a conserved position (an Arg in CSK but an Ala in SRC). The C-terminal contact partner is the HRD arginine, HRD+1, as in Modi & Dunbrack's APE9-Arg contact. The 5.5 Å all-atom cutoff is retained as this pipeline's own sensitivity choice (Kincore uses 6.0 Å).
 3. **Missing-density guard for `ActLoop_NT` / `ActLoop_CT`.** Landmark indices address the *resolved*-residue list, so a disordered activation loop was invisible to index arithmetic and v7r2 silently measured across the gap. Offsets are now validated against deposited residue numbering and yield `N/A` when broken. No effect on AlphaFold 3 models (complete chains); it matters for experimental structures.
 
-`Dihedral`, `D2_Dist`, `SB_Dist` and every other column are unchanged. The v7r2 wrapper and worker are **retained unmodified** alongside the v7r3 ones so prior results stay reproducible; the two wrappers are otherwise identical apart from the version strings in the module they call and the output filenames.
+`Dihedral`, `D2_Dist`, `SB_Dist` and every other column are unchanged. **v7r3 is the only version shipped here and is the version of record for every published result.** The v7r2 wrapper, worker and data dictionary were removed at this release so that superseded values cannot be reproduced by accident; they remain in this repository's git history if a v7r2 output ever has to be interpreted.
 
 ## Getting Started
 
@@ -106,7 +106,7 @@ Use `-n / --max-chains` to declare the total number of chains per structure (kin
 Every file either stage emits is listed in `docs/AlloQuant_output_file_manifest_v7r3.xlsx`.
 
 ## Documentation
-* **`docs/AlloQuant_master_CSV_data_dictionary_v7r3.{xlsx,pdf}`** — the master-CSV schema, column by column: group, type, units, when populated, allowed values, the empirical range/distribution in the reference run, and the measurement rule behind each value. The v7r2 edition is retained for anyone holding v7r2 output.
+* **`docs/AlloQuant_master_CSV_data_dictionary_v7r3.{xlsx,pdf}`** — the master-CSV schema, column by column: group, type, units, when populated, allowed values, the empirical range/distribution in the reference run, and the measurement rule behind each value.
 * **`docs/AlloQuant_output_file_manifest_v7r3.{xlsx,pdf}`** — every file the two modules emit, by stage and phase, with a description and a presence check against the reference run.
 * **`METRICS_CHEATSHEET.md`** — the biological meaning of each measurement, how it is plotted, and why some distances differ from the dashed lines drawn in the ChimeraX `.cxc` visuals.
 
@@ -118,18 +118,15 @@ Every file either stage emits is listed in `docs/AlloQuant_output_file_manifest_
 ├── LICENSE
 ├── requirements.txt
 ├── scripts/
-│   ├── run_kinase_pipeline_v7r3.py    # Part 1 entry point (current)
-│   ├── run_kinase_pipeline_v7r2.py    # retained for reproducibility
+│   ├── run_kinase_pipeline_v7r3.py    # Part 1 entry point
 │   ├── run_allostery_discovery_v7r1.py# Part 2 entry point (allostery discovery)
 │   └── modules/
 │       ├── generate_config.py
 │       ├── extract_fasta.py                    # Parallel FASTA extraction
 │       ├── extract_landmarks.py                # HMM-based structural mapping
 │       ├── kinome_VISalign.py                  # 1D schematics and MSA plotting
-│       ├── 1_run_parallel_chimerax_hmm_v7r3.py # Parallel orchestrator (current)
-│       ├── chimerax_hmm_worker_v7r3.py         # Headless 3D geometry (current)
-│       ├── 1_run_parallel_chimerax_hmm_v7r2.py # retained
-│       ├── chimerax_hmm_worker_v7r2.py         # retained
+│       ├── 1_run_parallel_chimerax_hmm_v7r3.py # Parallel orchestrator
+│       ├── chimerax_hmm_worker_v7r3.py         # Headless 3D geometry
 │       ├── extract_af3_metrics.py              # Extracts ipTM and PAE metrics
 │       ├── make_bingo.py                       # Statistical crossover matrix generator
 │       ├── multimer_core_engine.R               # Part 2 statistics/plots engine
