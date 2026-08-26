@@ -1,0 +1,4 @@
+Structural_Feature,Target_State,p_value,p.adj,p.adj.signif
+State,Active (BLAminus),4.997501249375312e-4,7.496251874062968e-4,***
+C_Helix,In,4.997501249375312e-4,7.496251874062968e-4,***
+R_Spine,Intact,0.2478760619690155,0.2478760619690155,ns
