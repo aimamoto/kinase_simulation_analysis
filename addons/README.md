@@ -183,3 +183,40 @@ the same residue pairs. In the manuscript they come to a few percent of the per-
 is why the conclusion is "below resolution" rather than "invariant".
 
 **Provenance:** Supplementary Note 8.
+
+## `chain_local_rmsf.py` — chain-local per-residue Cα RMSF
+
+Measures how much each chain's own fold deforms across an ensemble, without letting the two
+subunits' motion relative to each other leak into the number.
+
+**Input:** an AlphaFold3 output directory holding one subdirectory per condition, each with
+`seed-*_sample-*/model.cif`. It reads the coordinates directly and does not touch any
+`plots_and_stats_*` output, so it carries no AlloQuant version tag and its result is unaffected
+by the v7r3 metric corrections.
+
+**Method:** each chain is fitted on its own conformation in the **first model of that
+condition**, using that chain's Cα atoms only (Kabsch). Per-residue RMSF is then taken about
+that chain's mean position across the condition's models, over residues present in every model.
+Reports median, 90th percentile, the percentage of residues above a mobility threshold
+(0.5 Å by default), and mean pLDDT, plus the full per-residue profile on request.
+
+**Run:**
+```bash
+python3 addons/chain_local_rmsf.py --root "$ALLOQUANT_CDK1" \
+    --conditions a-cdk1_b-ccnb1-166_0atp=+CCNB1 \
+                 a-cdk1_b-ccnb1-166_1atp=+CCNB1+ATP \
+                 "a-cdk1-pt161_b-ccnb1-166_1atp=pT161 (active)" \
+                 a-cdk1-pt14-py15-pt161_b-ccnb1-166_1atp=triple-P \
+    --chains A=CDK1 B=CCNB1 \
+    --out chain_local_rmsf.csv --profiles-out chain_local_rmsf_profiles.csv
+```
+
+**Two traps.** Chain-local fitting is not interchangeable with the shared-frame superposition
+used for a whole complex: a shared frame retains inter-chain motion, so the two sets of values
+must not be compared or placed on a common axis. And polymer membership must be decided by
+`label_seq_id`, not by `group_PDB`: AlphaFold3 writes modified residues (TPO, PTR, SEP) as
+HETATM even though they belong to the chain, while true ligands (ATP, MG) carry no
+`label_seq_id`. Filtering on `group_PDB` silently shortens every phosphorylated chain and shifts
+its statistics.
+
+**Provenance:** S9 Table and Supplementary Note 15.
