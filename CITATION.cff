@@ -7,6 +7,7 @@ repository-code: "https://github.com/aimamoto/kinase_simulation_analysis"
 authors:
   - family-names: Imamoto
     given-names: Akira
+    orcid: "https://orcid.org/0000-0002-1009-9302"
     affiliation: "WPI-PRIMe, The University of Osaka, Suita, Osaka, Japan; The University of Chicago, Chicago, IL, USA"
     email: aimamoto@uchicago.edu
   - family-names: Wu
