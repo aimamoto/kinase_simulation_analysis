@@ -1,0 +1,10 @@
+metadata:
+  generated: '2026-08-07T09:53:21.133667'
+  tool: generate_config.py
+pattern_matches:
+  csk-wtcat_apo:
+    proteins:
+    - name: csk-wt
+  csk-wtcat_holo:
+    proteins:
+    - name: csk-wt
