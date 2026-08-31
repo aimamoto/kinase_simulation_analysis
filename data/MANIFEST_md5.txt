@@ -1,5 +1,5 @@
 # md5 checksums for every file in this dataset (this manifest excluded)
-6cebebabf0a60ad8368fb330907dba02  README.md
+34e0e8ae2847d3be314195890035a408  README.md
 804a6c6c0eff336590263b87c692f03f  cdk1_ccnb1_260517/addons/chain_local_rmsf_out/chain_local_rmsf.csv
 946a65f60cf349705f38dcd357afc00a  cdk1_ccnb1_260517/addons/chain_local_rmsf_out/chain_local_rmsf_profiles.csv
 c2db607aac5b82bfb16a7e6973e44ad8  cdk1_ccnb1_260517/master_kinase_analysis_results_v7r3.csv
