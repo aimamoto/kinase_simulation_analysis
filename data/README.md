@@ -20,12 +20,12 @@ pipeline, including the ones here, is described in the AlloQuant output file man
 | Directory | Ensemble | Supports |
 |---|---|---|
 | `cdk1_ccnb1_260517/` | CDK1–CCNB1, 100 models per condition (600 total) | Fig 2; the quantities annotated on Fig 3; S2 and S9 Tables; Notes 2 to 5 and 15 |
-| `csk_src_dimer_260718/` | CSK–SRC heterodimer, 7 conditions (795 paired models) | Figs 4 and 5; S3, S4 and S7 Figs; S3, S4, S7 and S8 Tables; Notes 6 to 14 |
+| `csk_src_dimer_260718/` | CSK–SRC heterodimer, 7 conditions (795 paired models) | Figs 5 and 6; S3, S4 and S7 Figs; S3, S4, S7 and S8 Tables; Notes 6 to 14 |
 | `csk_monomer_260805/` | Monomeric CSK apo and holo, 40 seeds per stack | The counts tabulated in S2 Fig; Results on nucleotide-locked monomeric CSK |
-| `interface_analyses/` | Derived interface and composition analyses of the dimer ensemble | Fig 4A; Notes 8 and 10 |
+| `interface_analyses/` | Derived interface and composition analyses of the dimer ensemble | Fig 5A; Notes 8 and 10 |
 | `validation_3d7t/` | AlloQuant applied to the CSK–SRC crystal structure 3D7T, with the Kincore reference output | S1 Table; Note 1 |
 
-Figures that are structure renderings (Figs 1, 3, 6; S1, S2 and S5 Figs) are reproducible from
+Figures that are structure renderings (Figs 1, 3, 4; S1, S2 and S5 Figs) are reproducible from
 the model coordinates rather than from these tables. The same applies to the per-residue Cα RMSF
 colouring of S5 Fig panel A, which is produced inside UCSF ChimeraX.
 
@@ -40,7 +40,7 @@ Within each ensemble directory:
   labels.
 - `plots_and_stats_*_GMM/Phase8_Volcanos/Stats_*.csv` are the post-hoc pairwise driver
   analyses, one file per contrast, giving effect size and adjusted significance per metric.
-- `addons/coupling_out_v7r3/` holds the paired cross-chain coupling results (Fig 5).
+- `addons/coupling_out_v7r3/` holds the paired cross-chain coupling results (Fig 6).
 - `addons/mac_confidence_out_v7r3/` holds the prediction-confidence control, in which MAC is
   recomputed with AlphaFold3 confidence partialled out (S6 Fig; S5 and S6 Tables; Note 13).
 - `addons/chain_local_rmsf_out/` holds the chain-local Cα RMSF summary reported as S9 Table,

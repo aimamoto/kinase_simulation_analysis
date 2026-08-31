@@ -1,0 +1,17 @@
+{
+  "title": "AlloQuant: quantifying allostery in AlphaFold3 kinase ensembles",
+  "upload_type": "software",
+  "license": "MIT",
+  "access_right": "open",
+  "creators": [
+    { "name": "Imamoto, Akira", "affiliation": "WPI-PRIMe, The University of Osaka, Suita, Osaka, Japan; The University of Chicago, Chicago, IL, USA" },
+    { "name": "Wu, Yichao", "affiliation": "WPI-PRIMe, The University of Osaka, Suita, Osaka, Japan" },
+    { "name": "Shinobu, Ai", "affiliation": "WPI-PRIMe, The University of Osaka, Suita, Osaka, Japan" },
+    { "name": "Okada, Mariko", "affiliation": "Institute for Protein Research, The University of Osaka, Suita, Osaka, Japan" }
+  ],
+  "keywords": [
+    "protein kinase", "allostery", "AlphaFold3", "conformational ensemble",
+    "trans-allosteric regulation", "CDK1", "CSK", "SRC", "structural bioinformatics"
+  ],
+  "description": "<p>AlloQuant is a two-module analysis suite that turns AlphaFold3 structural ensembles into quantitative readouts of kinase regulation.</p><p><strong>Module 1</strong> assigns canonical kinase landmarks by profile-HMM alignment to the Pfam Pkinase model, so one definition applies across the kinome without depending on fixed residue numbering, then measures inter-landmark distances and angles and makes categorical conformational calls. <strong>Module 2</strong> discovers metastable states without supervision, quantifies internal network rigidity as the mean absolute correlation (MAC) among those measurements, and identifies sub-angstrom differential drivers between conditions or between states.</p><p>The repository also archives, under <code>data/</code>, the derived tables from which every number reported in the accompanying paper is computed, together with the AlloQuant master CSV data dictionary and output-file manifest under <code>docs/</code>.</p>"
+}

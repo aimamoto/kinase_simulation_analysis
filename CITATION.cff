@@ -1,0 +1,40 @@
+cff-version: 1.2.0
+title: "AlloQuant: quantifying allostery in AlphaFold3 kinase ensembles"
+message: "If you use this software or the data archived with it, please cite both the software and the accompanying paper."
+type: software
+license: MIT
+repository-code: "https://github.com/aimamoto/kinase_simulation_analysis"
+authors:
+  - family-names: Imamoto
+    given-names: Akira
+    affiliation: "WPI-PRIMe, The University of Osaka, Suita, Osaka, Japan; The University of Chicago, Chicago, IL, USA"
+    email: aimamoto@uchicago.edu
+  - family-names: Wu
+    given-names: Yichao
+    affiliation: "WPI-PRIMe, The University of Osaka, Suita, Osaka, Japan"
+  - family-names: Shinobu
+    given-names: Ai
+    affiliation: "WPI-PRIMe, The University of Osaka, Suita, Osaka, Japan"
+  - family-names: Okada
+    given-names: Mariko
+    affiliation: "Institute for Protein Research, The University of Osaka, Suita, Osaka, Japan"
+keywords:
+  - protein kinase
+  - allostery
+  - AlphaFold3
+  - conformational ensemble
+  - trans-allosteric regulation
+  - CDK1
+  - CSK
+  - SRC
+abstract: >-
+  AlloQuant is a two-module analysis suite that turns AlphaFold3 structural
+  ensembles into quantitative readouts of kinase regulation. Module 1 assigns
+  canonical kinase landmarks by profile-HMM alignment to the Pfam Pkinase model,
+  so one definition applies across the kinome without fixed residue numbering,
+  and measures inter-landmark distances and angles from which it makes
+  categorical conformational calls. Module 2 discovers metastable states,
+  quantifies internal network rigidity as the mean absolute correlation among
+  those measurements, and identifies sub-angstrom differential drivers between
+  conditions or states. This repository also archives the derived tables
+  underlying every number reported in the accompanying paper.
