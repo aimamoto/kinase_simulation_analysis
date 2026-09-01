@@ -12,12 +12,15 @@ authors:
     email: aimamoto@uchicago.edu
   - family-names: Wu
     given-names: Yichao
+    orcid: "https://orcid.org/0009-0005-6754-9086"
     affiliation: "WPI-PRIMe, The University of Osaka, Suita, Osaka, Japan"
   - family-names: Shinobu
     given-names: Ai
+    orcid: "https://orcid.org/0000-0002-2865-6461"
     affiliation: "WPI-PRIMe, The University of Osaka, Suita, Osaka, Japan"
   - family-names: Okada
     given-names: Mariko
+    orcid: "https://orcid.org/0000-0002-6210-8223"
     affiliation: "Institute for Protein Research, The University of Osaka, Suita, Osaka, Japan"
 keywords:
   - protein kinase
