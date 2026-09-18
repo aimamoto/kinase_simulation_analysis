@@ -283,8 +283,35 @@ def analyze_activation_loop_dynamic(residues: Any, lm: Dict) -> Tuple[str, str]:
     if idx_ape is not None:
         # The C-terminal anchor is the HRD arginine (HRD+1), as in Modi & Dunbrack's APE9-Arg
         # contact -- not HRD+6, which is not a conserved position (it is an Arg in CSK but an
-        # Ala in SRC). NB the 5.5 A all-atom cutoff remains AlloQuant's own sensitivity choice
-        # and is deliberately looser than Kincore's 6.0 A (8.0 A for the TYR group).
+        # Ala in SRC).
+        #
+        # WHAT THIS MEASURES -- AND WHY IT IS NOT KINCORE'S APE9-Arg CONTACT.
+        # Kincore takes two NAMED atoms of ONE residue (APE9 CA to the Arg backbone O) at a
+        # 6.0 A cutoff (8.0 A for the TYR group). This block instead takes an ALL-ATOM
+        # minimum over a FOUR-residue window (APE-6..APE-9, i.e. Kincore's APE7..APE10) at
+        # 5.5 A.
+        #
+        # PROVENANCE: v7r3 changed ONLY the anchor (HRD+6 -> HRD+1) and added the
+        # residues_contiguous guards. The window, the all-atom minimum and the 5.5 A cutoff
+        # are inherited unchanged from v6r6 via v7r2 and were never revisited against
+        # Kincore. Their likely purpose -- inferred, not documented at the time -- is to
+        # absorb HMM landmark slip across a kinome-wide set and to give a less binary
+        # readout than a single backbone H-bond, which suits trajectory work; scan_limit
+        # stops the window reversing into the DFG motif in short activation loops.
+        #
+        # NB the 5.5 A cutoff is STRICTER than Kincore's 6.0 A, so on its own it makes this
+        # criterion LESS permissive, not more. (An earlier version of this comment called
+        # 5.5 A "looser", which is backwards.) The four-residue window more than offsets it:
+        # a minimum over four residues can only shrink the reported distance, and the
+        # residue supplying that minimum is frequently NOT Kincore's APE9 -- particularly
+        # where APE9 is a glycine and a neighbour in the window carries a long side chain.
+        # The window, not the cutoff, is what drives this metric away from Kincore's.
+        #
+        # CONSEQUENCE: ActLoop_CT is an AlloQuant metric in its own right. Do NOT compare it
+        # against Kincore's ActLoopCT label or quote an agreement percentage between them.
+        # Because it is an all-atom minimum over whatever side chains occupy APE-6..APE-9,
+        # it is sequence-dependent; pool it across different kinases only with that
+        # composition effect in mind.
         idx_arg = idx_hrd + 1
         if 0 <= idx_arg < len(residues) and residues_contiguous(residues, idx_hrd, idx_arg):
             ct_dists = []
