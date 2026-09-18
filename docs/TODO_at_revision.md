@@ -10,7 +10,7 @@
 > **The deposited/submitted files have NOT been changed and no update has been sent to the
 > editor.** `plos_submission/` still holds the 2026-09-01 files exactly as submitted. The
 > corrected file, an unmodified copy of the submitted one, and a full change note are staged in
-> `plos_submission/updates/2026-09-18/` for use at revision.
+> `plos_submission/updates/2026-09-19/` for use at revision.
 >
 > Verified: exactly three cells differ from the as-submitted workbook (`A9`, `I38`, `I55`).
 
@@ -107,7 +107,8 @@ that agreement is between different measurements. The same caveat applies to the
 N-terminal" row (AlloQuant scans `f+3…f+6` against `hrd-1`; Kincore uses the single DFG6–XHRD
 pair). **This is a framing issue in a submitted table and is the item most likely to need
 raising with the editor.** No measured value in S1 Table changes. Full analysis:
-`plos_submission/updates/2026-09-18/CHANGES_2026-09-18.md` §3.
+`plos_submission/updates/2026-09-19/CHANGES_2026-09-19.md` §3, and
+`S1_Table_note_2026-09-19.md` in the same directory for proposed footnote wording.
 
 Also corrected in `README.md` (v7r3 release note #2) and the worker source comment — commits
 `346eefb` and `b1fc720` on branch `docs-cheatsheet-corrections`.
