@@ -1,24 +1,38 @@
 # Deferred documentation corrections — action at manuscript revision
 
-**Created:** 2026-09-02. **Do not action before reviews return.**
+**Created:** 2026-09-02. **Updated: 2026-09-18 — Items 1 and 2 are now ACTIONED in the repo.**
+
+> **Status as of 2026-09-18.** Items 1 and 2 have been applied to
+> `docs/AlloQuant_master_CSV_data_dictionary_v7r3.xlsx`/`.pdf`, together with a third
+> correction to the `ActLoop_CT` entry found on 2026-09-18 (see below). They were bundled so a
+> single corrected S1 Dataset can be supplied at revision instead of piecemeal changes.
+>
+> **The deposited/submitted files have NOT been changed and no update has been sent to the
+> editor.** `plos_submission/` still holds the 2026-09-01 files exactly as submitted. The
+> corrected file, an unmodified copy of the submitted one, and a full change note are staged in
+> `plos_submission/updates/2026-09-18/` for use at revision.
+>
+> Verified: exactly three cells differ from the as-submitted workbook (`A9`, `I38`, `I55`).
 
 The manuscript, including **S1 Dataset** (`AlloQuant_master_CSV_data_dictionary_v7r3.xlsx`/`.pdf`),
 was submitted to *PLOS Computational Biology* on **2026-09-01**. The items below were found on
-2026-09-02, one day after submission. They are held deliberately so the deposited supplementary
-files match what the reviewers received. Fold them into the revision alongside the response to
-reviewers.
+2026-09-02, one day after submission; Item 5 was found on 2026-09-18. They were held so the
+deposited supplementary files matched what the reviewers received, and have now been applied to
+the repository copy only — see the status block above. Supply the corrected S1 Dataset at
+revision, alongside the response to reviewers.
 
 ## Bottom line first
 
 **No reported number changes. Nothing here is an erratum.** Every item is a prose/description
 defect in documentation. The pipeline code is correct, and every value in
 `master_kinase_analysis_results_v7r3.csv`, the `Phase*` tables, the figures and the paper is
-unaffected. Item 1 is the only one that sits inside a submitted supplementary file, and it is a
-single sentence that contradicts the same document's own per-column text.
+unaffected. Items 1, 2 and 5 sit inside a submitted supplementary file (S1 Dataset); each is a
+single sentence, and Items 1 and 2 contradict the same document's own per-column text. Item 5
+additionally has a framing consequence for two rows of S1 Table — see that item.
 
 ---
 
-## Item 1 — S1 Dataset: the "CSK numbering" sentence is wrong
+## Item 1 — S1 Dataset: the "CSK numbering" sentence is wrong  ✅ ACTIONED 2026-09-18
 
 **File:** `docs/AlloQuant_master_CSV_data_dictionary_v7r3.xlsx` (and the `.pdf`), general notes
 section — the row beginning "Distances in Angstrom (A), angles in degrees…".
@@ -39,7 +53,7 @@ CSK.
 reference kinase), and map to the equivalent target position via the HMM regardless of the residue
 type actually present". Leave every per-column description alone — they are already correct.
 
-## Item 2 — S1 Dataset: "the two shell methionines"
+## Item 2 — S1 Dataset: "the two shell methionines"  ✅ ACTIONED 2026-09-18
 
 **File:** same, the `Shell_M118_M120_Dist` row.
 
@@ -52,7 +66,7 @@ and SRC, Leu78/Phe80 in CDK1. "Methionine" is the PKA identity, inherited from t
 **Fix:** "…between the two hydrophobic-shell positions M118 and M120 (PKA numbering; Ile79/Thr81 in
 CSK and SRC, Leu78/Phe80 in CDK1)".
 
-## Item 3 — `data/MANIFEST_md5.txt` needs **no** change for Items 1-2
+## Item 3 — `data/MANIFEST_md5.txt` needs **no** change for Items 1-2 (nor for Item 5)
 
 Checked 2026-09-02: the manifest's paths are relative to `data/` and cover only
 `cdk1_ccnb1_260517/`, `csk_monomer_260806_fullmsa/`, `csk_src_dimer_260718/`,
@@ -71,6 +85,32 @@ As of 2026-09-02 all 203 entries verify clean.
 
 * `METRICS_CHEATSHEET.md` line 1 is a stray pasted GitHub attachment URL sitting above the title.
 * `scripts/modules/placeholder.txt` is leftover cruft, absent from the documented repo layout.
+
+## Item 5 — S1 Dataset: the `ActLoop_CT` Kincore comparison  ✅ ACTIONED 2026-09-18
+
+**Found:** 2026-09-18. **File:** same dictionary, the `ActLoop_CT` row (cell `I38`).
+
+**It said:** "The 5.5 A cutoff is AlloQuant's own sensitivity choice, deliberately looser than
+Kincore's 6.0 A."
+
+**Why it was wrong:** 5.5 Å is *stricter* than 6.0 Å, so the cutoff alone makes the criterion
+less permissive, not more; and the sentence implies the two tools measure the same contact
+differing only in cutoff. They do not — Kincore uses two named atoms of one residue
+(APE9 Cα ↔ HRD-Arg backbone O), this uses an all-atom minimum over a four-residue window. The
+window, not the cutoff, is what makes AlloQuant's criterion the more permissive of the two. Git
+history shows the window, all-atom minimum and 5.5 Å cutoff are inherited unchanged from
+`chimerax_hmm_worker_v6r6.py`; v7r3 changed only the anchor, so the framing predates v7r3.
+
+**⚠️ Knock-on for S1 Table:** S1 Table compares "A-loop C-terminal" against Kincore and marks
+the SRC row **agree** and the CSK row **divergent**. If the two quantities are not comparable,
+that agreement is between different measurements. The same caveat applies to the "A-loop
+N-terminal" row (AlloQuant scans `f+3…f+6` against `hrd-1`; Kincore uses the single DFG6–XHRD
+pair). **This is a framing issue in a submitted table and is the item most likely to need
+raising with the editor.** No measured value in S1 Table changes. Full analysis:
+`plos_submission/updates/2026-09-18/CHANGES_2026-09-18.md` §3.
+
+Also corrected in `README.md` (v7r3 release note #2) and the worker source comment — commits
+`346eefb` and `b1fc720` on branch `docs-cheatsheet-corrections`.
 
 ---
 
