@@ -1,6 +1,7 @@
 # Deferred documentation corrections — action at manuscript revision
 
-**Created:** 2026-09-02. **Updated: 2026-09-18 — Items 1 and 2 are now ACTIONED in the repo.**
+**Created:** 2026-09-02. **Updated: 2026-09-19 — Items 1, 2 and 5 are ACTIONED in the repo
+(staged for the editor, not sent); Item 4, cosmetic and repo-only, is cleared.**
 
 > **Status as of 2026-09-18.** Items 1 and 2 have been applied to
 > `docs/AlloQuant_master_CSV_data_dictionary_v7r3.xlsx`/`.pdf`, together with a third
@@ -81,10 +82,15 @@ cd data && md5sum -c MANIFEST_md5.txt
 
 As of 2026-09-02 all 203 entries verify clean.
 
-## Item 4 — cosmetic, repo only (no deposit impact)
+## Item 4 — cosmetic, repo only (no deposit impact)  ✅ ACTIONED 2026-09-19
 
 * `METRICS_CHEATSHEET.md` line 1 is a stray pasted GitHub attachment URL sitting above the title.
+  — removed; the file now opens on its `# Kinase Structural Metrics Cheat Sheet` title.
 * `scripts/modules/placeholder.txt` is leftover cruft, absent from the documented repo layout.
+  — deleted. Nothing referenced it (the only mention in the repo was this list), and
+  `scripts/modules/` holds ten real files, so the directory is not at risk of disappearing.
+
+Neither file is part of the submission; no deposited or staged file changed.
 
 ## Item 5 — S1 Dataset: the `ActLoop_CT` Kincore comparison  ✅ ACTIONED 2026-09-18
 

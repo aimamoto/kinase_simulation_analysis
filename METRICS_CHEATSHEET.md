@@ -1,4 +1,3 @@
-[METRICS_CHEATSHEET.md](https://github.com/user-attachments/files/26516007/METRICS_CHEATSHEET.md)
 # Kinase Structural Metrics Cheat Sheet
 
 This guide maps the raw measurements in `master_kinase_analysis_results_v7r3.csv` to their biological meaning, their visual representation in the R statistics pipeline (`scripts/modules/`), and where to find them in your 3D ChimeraX sessions. 
