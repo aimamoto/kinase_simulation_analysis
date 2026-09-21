@@ -126,15 +126,24 @@ def verify_coverage(final_df, cif_files):
               f"({len(final_df)} chain rows).")
         return True
 
-    by_dir = {}
+    # Roll up to the arm (the parent of the per-seed directory) -- a lost arm is 240
+    # directories on a run like 260918, and the arm is what the reader needs to see.
+    by_arm = {}
     for d, f in missing:
-        by_dir[d] = by_dir.get(d, 0) + 1
+        arm = os.path.dirname(d) or d
+        by_arm[arm] = by_arm.get(arm, 0) + 1
     print("\n" + "=" * 75, file=sys.stderr)
     print(f" [!] FATAL: {len(missing)} of {len(expected)} models produced NO rows.", file=sys.stderr)
     print("", file=sys.stderr)
-    print("     Missing models, by directory:", file=sys.stderr)
-    for d in sorted(by_dir):
-        print(f"       {by_dir[d]:6d}  {d}", file=sys.stderr)
+    print("     Missing models, by arm:", file=sys.stderr)
+    for arm in sorted(by_arm):
+        print(f"       {by_arm[arm]:6d}  {arm}", file=sys.stderr)
+    print("", file=sys.stderr)
+    print("     First missing directories:", file=sys.stderr)
+    for d, f in missing[:10]:
+        print(f"       {d}", file=sys.stderr)
+    if len(missing) > 10:
+        print(f"       ... and {len(missing) - 10} more", file=sys.stderr)
     print("", file=sys.stderr)
     print("     The commonest cause is B12.5: the landmark gate found no candidate", file=sys.stderr)
     print("     for these models, every chain fell through to the co-factor branch,", file=sys.stderr)
