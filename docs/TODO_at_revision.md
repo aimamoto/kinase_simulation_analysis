@@ -1,7 +1,8 @@
 # Deferred documentation corrections — action at manuscript revision
 
 **Created:** 2026-09-02. **Updated: 2026-09-19 — Items 1, 2 and 5 are ACTIONED in the repo
-(staged for the editor, not sent); Item 4, cosmetic and repo-only, is cleared.**
+(staged for the editor, not sent); Item 4, cosmetic and repo-only, is cleared. 2026-09-26 — Item 6
+(the `Type` definition) added, OPEN.**
 
 > **Status as of 2026-09-18.** Items 1 and 2 have been applied to
 > `docs/AlloQuant_master_CSV_data_dictionary_v7r3.xlsx`/`.pdf`, together with a third
@@ -118,6 +119,40 @@ raising with the editor.** No measured value in S1 Table changes. Full analysis:
 
 Also corrected in `README.md` (v7r3 release note #2) and the worker source comment — commits
 `346eefb` and `b1fc720` on branch `docs-cheatsheet-corrections`.
+
+## Item 6 — S1 Dataset: what `Type` is  ⏳ OPEN (found 2026-09-26)
+
+**File:** same dictionary, the `Type` row (cell `I22`).
+
+**It says:** "Kinase identity assigned by best sequence-identity match to the FASTA landmark set
+(get_best_landmark_for_chain)."
+
+**Why it is imprecise:** sequence identity picks *which landmark entry* measures the chain, but
+the value written is that entry's **name**. The name comes from `proteins.yaml` or the folder
+token, via `extract_fasta.py`, so `Type` encodes whatever the operator's name encodes: family
+(`CDK1`), allele (`CSK-WT`), or construct. It never encodes modification. The row's own second
+sentence (SRC pY159 reads `SRC-WT`) already shows this. Every consumer treats it as the
+operator's name: the Module 2 `TARGET_TYPE` filter, the `Condition_reviewed` join, and the addons'
+exact matches (`Type == 'CSK-WT'`). Found while fixing v7r4 (`6d638ee`, `91858a6` on
+`v7r4-bugfix`). There, one name covering several sequences (crystal copies, isoforms, constructs)
+produced dedup variants `NAME_1`, `NAME_2` …, and v7r4 now reports these as `NAME`.
+
+**Proposed wording:** "Protein name (from proteins.yaml / the folder token) of the FASTA landmark
+entry that best matches the chain's sequence (get_best_landmark_for_chain); its landmark positions
+are the ones used to measure this chain. Carries what the name carries (family, allele, construct),
+not modification: the SRC pY159 variant reads SRC-WT, and the pY159 vs WT distinction lives in
+Simulation_ID/Directory."
+
+**No reported number changes.** The published datasets have no dedup variants, so their `Type`
+values and every measured column are what v7r4 gives. This clarifies a definition; bundle it with
+Items 1, 2 and 5 only if the S1 Dataset is being re-supplied anyway.
+
+**Related Module 2 code issues (not documentation; not fixed; published outputs unaffected):**
+* `multimer_core_engine.R:276` selects the target by *prefix* (`^(?:[A-Z]-)?TARGET`), so `CDK1`
+  would also take `CDK10`/`CDK12`. No published dataset has two such names.
+* `multimer_core_engine.R:211` rebuilds `Condition_reviewed` by finding `tolower(Type)` inside the
+  condition text, so a chain whose name is not spelled out in its condition string keeps its
+  designed apo/holo state without any warning.
 
 ---
 
