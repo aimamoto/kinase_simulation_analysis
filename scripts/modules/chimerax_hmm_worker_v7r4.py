@@ -49,6 +49,21 @@ from chimerax.core.commands import run
 #    so the fallback is decided on sequence, not on names.
 # 2. The orchestrator now propagates this worker's return code and asserts model coverage
 #    after the merge (1_run_parallel_chimerax_hmm_v7r4.py).
+# 3. (2026-09-26) Landmark entries with extract_fasta's dedup suffix (NAME_1, NAME_2 ...) were
+#    never used. When one protein name covers several distinct sequences -- crystal copies
+#    with different gaps, constructs with different ends -- three links chained: the
+#    process_model gate dropped every NAME_n (the suffix fails the substring test); the
+#    expected-name bonus gave the bare NAME +500 against +250 for NAME_n; and the reference
+#    sequence for each entry was fetched by header SUBSTRING, so all variants were scored
+#    against the bare NAME's sequence. Every chain was measured with the bare entry's
+#    landmark positions, whichever sequence that was (it depends on file order). Found on six
+#    Aurora A crystal copies (1OL5, 8PR7, 8GUW): 1OL5 read as Outlier/aC-out/D1 15 A instead
+#    of Active (BLAminus). Fix: strip the suffix in the gate and in the name bonus, take the
+#    entry's own sequence by exact header, and break identity ties on reference coverage.
+#    Runs whose FASTA has no NAME_n variants are unaffected: verified byte-identical on 3D7T,
+#    a CSK-SRC slice and an EGFR WT/L858R/T790M/L858R-T790M slice (nested names). Runs WITH
+#    variants change -- to the values each structure gives when run alone (verified, all
+#    columns, on the six crystal copies).
 #
 # UPDATE LOG (v7r2 -> v7r3)   *** CHANGES REPORTED VALUES -- NOT A DROP-IN FOR v7r2 ***
 # Date: July 29, 2026
@@ -413,21 +428,39 @@ def get_best_landmark_for_chain(chain_seq: str, cid: str, candidate_lms: List, f
             if chain_seq[coords['hrd']+1] in ['R', 'C', 'H', 'K']: struct_score += 1
             if chain_seq[coords['hrd']+2] == 'D': struct_score += 2
 
-        ratio = 0.0; ref_seq = None
-        for header, fseq in fasta_seqs.items():
-            clean_header = re.sub(r'^\d+[_\-|]', '', header)
-            if fasta_name.lower() in clean_header.lower() or clean_header.lower() in fasta_name.lower():
-                ref_seq = fseq; break
+        # v7r4 (2026-09-26): take this entry's OWN sequence when its header exists. The
+        # substring search below was the only lookup until now, and it returns the FIRST header
+        # that contains the entry name or is contained in it -- so with nested headers (AURKA /
+        # AURKA_3, EGFR / EGFR-T790M) several candidates were scored against one sequence, tied,
+        # and the landmark map was chosen by iteration order. Harmless when the tied maps share
+        # positions (point mutants of one construct); wrong when they do not (crystal copies
+        # with different gaps, constructs with different starts). hmm_landmarks.json keys are
+        # the FASTA headers, so the exact match is the normal case; the substring search is kept
+        # only as the fallback for inputs whose keys and headers were edited apart.
+        ratio = 0.0; ref_seq = fasta_seqs.get(fasta_name)
+        if ref_seq is None:
+            for header, fseq in fasta_seqs.items():
+                clean_header = re.sub(r'^\d+[_\-|]', '', header)
+                if fasta_name.lower() in clean_header.lower() or clean_header.lower() in fasta_name.lower():
+                    ref_seq = fseq; break
         
+        ref_cover = 0.0
         if ref_seq:
             sm = difflib.SequenceMatcher(None, chain_seq, ref_seq.upper(), autojunk=False)
             total_identical = sum(block.size for block in sm.get_matching_blocks())
             ratio = total_identical / len(chain_seq) if len(chain_seq) > 0 else 0.0
+            # Fraction of the REFERENCE the chain accounts for. `ratio` is normalised by the
+            # chain, so a longer entry containing the whole chain also scores 1.0 and ties with
+            # the chain's own entry. Worth at most 1 point below, so it can only decide between
+            # candidates within 1 point of each other. One residue of identity is worth
+            # 1000/len(chain) points -- more than 1 for any chain under 1000 residues -- so in
+            # practice that means ties. The 0.30 floor still tests `ratio` alone.
+            ref_cover = total_identical / len(ref_seq) if len(ref_seq) > 0 else 0.0
             used_ratio = True
 
         # [CRITICAL SCORING FIX] Make sequence identity the dominant factor. 
         # A 100% match gets 1000 pts. A point mutant gets ~990 pts. Mismatches get 0.
-        composite = (ratio * 1000) + struct_score
+        composite = (ratio * 1000) + struct_score + ref_cover
         
         if fasta_name.endswith(f"_{cid}") or fasta_name.endswith(f"-{cid}") or f"chain_{cid}" in fasta_name.lower(): 
             composite += 50
@@ -444,7 +477,11 @@ def get_best_landmark_for_chain(chain_seq: str, cid: str, candidate_lms: List, f
         # Only apply YAML folder-name assumptions if the sequence identity is remotely plausible (>30%)
         if expected_name and ratio > 0.30:
             norm_exp = normalize_sim_name(expected_name).lower()
-            norm_fas = normalize_sim_name(fasta_name).lower()
+            # v7r4 (2026-09-26): compare without the dedup suffix, as in the process_model gate.
+            # Otherwise the bare NAME gets +500 and every NAME_n only +250 -- a 250-point lead no
+            # identity difference between variants of one protein can overcome, so the bare
+            # entry's landmark positions were used for every variant.
+            norm_fas = normalize_sim_name(re.sub(r'_\d+$', '', fasta_name)).lower()
             if norm_exp == norm_fas: composite += 500
             elif expected_name.lower() in fasta_name.lower() or norm_exp in norm_fas: composite += 250
 
@@ -485,7 +522,15 @@ def process_model(session, full_cif_path: str, base_dir: str, out_dir_core: str,
     sim_base = normalize_sim_name(sim_id)
     candidate_lms = []
     for fasta_name, coords in all_landmarks.items():
-        fasta_base = normalize_sim_name(fasta_name)
+        # v7r4 (2026-09-26): drop extract_fasta's dedup suffix (`_1`, `_2`, ...) before the name
+        # test. When one protein name covers several distinct sequences (crystal copies with
+        # different gaps, constructs with different ends), extract_fasta writes NAME, NAME_1,
+        # NAME_2 ... and the suffix made every NAME_n fail this substring test -- only the bare
+        # entry survived, so every chain was measured with that one entry's landmark positions,
+        # whichever sequence it happened to be. Protein names come from `_`-separated folder
+        # tokens and cannot contain `_`, so a trailing `_<digits>` can only be that suffix.
+        # Choosing among the variants is left to get_best_landmark_for_chain (sequence identity).
+        fasta_base = normalize_sim_name(re.sub(r'_\d+$', '', fasta_name))
         if fasta_base.lower() in sim_base.lower() or sim_base.lower() in fasta_base.lower(): candidate_lms.append((fasta_name, coords))
         elif fasta_name.lower() in sim_id.lower() or fasta_name.replace("_", "-").lower() in sim_id.lower(): candidate_lms.append((fasta_name, coords))
             
