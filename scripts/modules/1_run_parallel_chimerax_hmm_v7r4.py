@@ -11,17 +11,86 @@ import multiprocessing
 import argparse
 import math
 import shutil  
+import re
+import json
+import difflib
 import pandas as pd
 
 # --- CONFIGURATION ---
 WORKER_SCRIPT = os.path.join("modules", "chimerax_hmm_worker_v7r4.py")
 FINAL_CSV_NAME = "hmm_kinase_analysis_results_v7r4.csv"
 CHUNK_DIR = "temp_chimerax_chunks"
+REFS_CSV_NAME = "landmark_refs_v7r4.csv"
 
 def ensure_hmm_landmarks():
     if os.path.exists("hmm_landmarks.json"): return
     try: subprocess.run(["python3", "0_extract_hmm_landmarks.py"], check=True)
     except Exception: sys.exit(1)
+
+def read_fasta(path):
+    seqs, name = {}, None
+    with open(path) as f:
+        for line in f:
+            line = line.strip()
+            if line.startswith(">"):
+                name = line[1:].split()[0]; seqs[name] = ""
+            elif name: seqs[name] += line
+    return seqs
+
+def report_name_variants():
+    """v7r4 (2026-09-26). Say when one protein name covers several kinase sequences.
+
+    extract_fasta writes NAME, NAME_1, NAME_2 ... when chains share a name but not a
+    sequence. Each variant is measured with its own landmark map, but `Type` reports all of
+    them as NAME (worker UPDATE LOG item 4), so Module 2 pools them. That is right for crystal
+    copies with different gaps; it may not be for isoforms, other constructs or mutants. The
+    landmark indices cannot tell these apart -- they are positions in each entry's own sequence
+    and shift with every construct start -- so compare the sequences: a variant that differs
+    from NAME only by gaps is reported as such; substituted positions are counted. NAME is
+    whichever sequence extract_fasta met first, so the comparison is against that one. An isoform
+    that only DELETES residues also looks like gaps; only the operator can say.
+    Informational: never stops the run.
+    """
+    if not (os.path.exists("sequences.fasta") and os.path.exists("hmm_landmarks.json")): return
+    seqs = read_fasta("sequences.fasta")
+    with open("hmm_landmarks.json") as f: lms = json.load(f)
+    kinase = {h for h, v in lms.items() if isinstance(v, dict) and v.get("f") is not None}
+    groups = {}
+    for h in kinase:
+        m = re.match(r'^(.+)_\d+$', h)
+        base = m.group(1) if m and m.group(1) in seqs else h
+        groups.setdefault(base, []).append(h)
+    groups = {b: sorted(hs, key=lambda h: (h != b, h)) for b, hs in groups.items() if len(hs) > 1}
+    if not groups: return
+
+    print("\n[i] One protein name covers several kinase sequences. Each is measured with its own")
+    print("    landmark map; `Type` reports them all under the name, so Module 2 pools them.")
+    for base, hs in sorted(groups.items()):
+        ref = seqs.get(base, "")
+        print(f"    {base}:")
+        for h in hs:
+            s = seqs.get(h, "")
+            if h == base:
+                print(f"      {h:<16} {len(s):5d} aa  (reference for the comparison)"); continue
+            ops = difflib.SequenceMatcher(None, ref, s, autojunk=False).get_opcodes()
+            # Equal-length replace blocks only: an unequal block is a gap edge the aligner could
+            # place either way (seen on two copies of one crystal construct), not a substitution.
+            subs = sum(i2 - i1 for op, i1, i2, j1, j2 in ops if op == "replace" and i2 - i1 == j2 - j1)
+            what = "gaps/ends only" if subs == 0 else f"{subs} substituted position(s)"
+            print(f"      {h:<16} {len(s):5d} aa  vs {base}: {what}")
+    print(f"    Chain-to-entry assignments: {REFS_CSV_NAME}. If these are isoforms, constructs or")
+    print("    mutants you want kept apart, name them NAME-variant in proteins.yaml and re-run.")
+
+def merge_landmark_refs():
+    # v7r4: merge the workers' landmark_refs side files (written only when a chain used a NAME_n
+    # entry); remove any stale merged file first so it always describes this run.
+    if os.path.exists(REFS_CSV_NAME): os.remove(REFS_CSV_NAME)
+    parts = glob.glob("chunk_*_landmark_refs_v7r4.csv")
+    if not parts: return
+    df = pd.concat([pd.read_csv(p) for p in parts], ignore_index=True)
+    df.sort_values(by=["Simulation_ID", "Chain"]).to_csv(REFS_CSV_NAME, index=False)
+    for p in parts: os.remove(p)
+    print(f"[*] {len(df)} chain rows used a NAME_n landmark entry; see {REFS_CSV_NAME}.")
 
 def filter_cif_files(cif_files):
     # Skip any path under an 'archive*' subdirectory (case-insensitive)
@@ -164,6 +233,7 @@ def main():
     if args.cores > system_cores: args.cores = system_cores
 
     ensure_hmm_landmarks()
+    report_name_variants()
     cif_files = filter_cif_files(glob.glob("**/*.cif", recursive=True))
     if not cif_files: sys.exit(1)
 
@@ -181,6 +251,7 @@ def main():
         print("=" * 75, file=sys.stderr)
 
     final_df = merge_csvs()
+    merge_landmark_refs()
     covered = verify_coverage(final_df, cif_files)
 
     # v7r4: the chunk directory is the only evidence of what was lost, so keep it

@@ -64,6 +64,17 @@ from chimerax.core.commands import run
 #    a CSK-SRC slice and an EGFR WT/L858R/T790M/L858R-T790M slice (nested names). Runs WITH
 #    variants change -- to the values each structure gives when run alone (verified, all
 #    columns, on the six crystal copies).
+# 4. (2026-09-26, follows 3) `Type` reports the protein NAME, not the dedup variant. With 3 in
+#    place a chain matched to NAME_3 would otherwise read `Type = NAME_3`, and the suffix is
+#    only extract_fasta's collision counter: which sequence gets the bare name depends on file
+#    order, and one counter covers crystal gaps, construct ends, engineered mutants and
+#    isoforms alike. Every consumer of `Type` (the Module 2 TARGET_TYPE filter and
+#    Condition_reviewed join, the ERBB fork's Receptor_Family, exact matches in the addons)
+#    expects the operator's name, so the suffix is dropped here -- only when the bare NAME is
+#    itself a FASTA header, i.e. only suffixes extract_fasta made. `Type` is then what v7r3
+#    reported. The entry actually used goes to landmark_refs_v7r4.csv (written only when some
+#    chain used a NAME_n entry), so the master CSV keeps its columns. To keep isoforms or
+#    constructs apart in Module 2, name them NAME-variant in proteins.yaml.
 #
 # UPDATE LOG (v7r2 -> v7r3)   *** CHANGES REPORTED VALUES -- NOT A DROP-IN FOR v7r2 ***
 # Date: July 29, 2026
@@ -412,6 +423,11 @@ def get_core_name(rel_path: str) -> str:
         for t in part.split('_'):
             if t and t not in seen_tokens: seen_tokens.append(t)
     return "_".join(seen_tokens)
+
+def type_from_landmark_entry(lm_name: str, fasta_seqs: Dict) -> str:
+    # v7r4 (2026-09-26): NAME_n -> NAME when NAME is also a header (UPDATE LOG item 4).
+    m = re.match(r'^(.+)_\d+$', lm_name or "")
+    return m.group(1) if m and m.group(1) in fasta_seqs else lm_name
 
 def get_best_landmark_for_chain(chain_seq: str, cid: str, candidate_lms: List, fasta_seqs: Dict, sim_id: str = "", expected_name: str = None) -> Tuple[str, Optional[Dict]]:
     best_lm = None; best_name = "Unknown"; best_score = -1.0; used_ratio = False
@@ -782,7 +798,7 @@ def process_model(session, full_cif_path: str, base_dir: str, out_dir_core: str,
 
         chain_data[cid] = {
             "residues": res, "landmarks": lm, 
-            "meta": {"Type": lm_name, "State": state, "CHelix": chelix_label,
+            "meta": {"Type": type_from_landmark_entry(lm_name, fasta_seqs), "Landmark_Ref": lm_name, "State": state, "CHelix": chelix_label,
                      "RSpine": r_spine, "CSpine": c_spine, "Spatial": spatial_label, "Dihedral": dihedral_label,
                      "ActLoop_NT": nt_loop, "ActLoop_CT": ct_loop, "Phi_D": raw_phi_d, "Psi_D": raw_psi_d,
                      "Cleft_Gape_Dist": cleft_gape_val, "Mg_Hijack_Dist": mg_hijack_val, "Substrate_Clearance_Angle": clearance_angle_val,
@@ -927,7 +943,7 @@ def process_model(session, full_cif_path: str, base_dir: str, out_dir_core: str,
         meta = data['meta']
         csv_rows.append({
             "Simulation_ID": sim_id, "Directory": os.path.dirname(full_cif_path), "File": os.path.basename(full_cif_path), 
-            "Chain": cid, "Type": meta['Type'], "State": meta['State'],
+            "Chain": cid, "Type": meta['Type'], "Landmark_Ref": meta['Landmark_Ref'], "State": meta['State'],
             "Role": chain_roles[cid], "Partner": partner_map[cid],
             "Interface_C_Lobe_Donor_Dist": int_dist_AC_BN[cid], "Interface_N_Lobe_Rec_Dist": int_dist_BC_AN[cid],
             "CoFactor_Name": meta.get('CoFactor_Name', 'None'),
@@ -1098,9 +1114,21 @@ def main(session):
         except Exception as e: print(f"Error processing {full_cif_path}: {e}")
 
     with open(os.path.join(base_dir, out_csv_name), 'w', newline='') as csvfile:
-        writer = csv.DictWriter(csvfile, fieldnames=cols)
+        # Landmark_Ref is not a master column; it goes to the side file below.
+        writer = csv.DictWriter(csvfile, fieldnames=cols, extrasaction='ignore')
         writer.writeheader()
         writer.writerows(all_rows)
+
+    # v7r4 (UPDATE LOG item 4): which landmark entry measured each chain, only where it is not
+    # the name `Type` shows. The orchestrator merges these into landmark_refs_v7r4.csv.
+    refs = [r for r in all_rows if r.get("Landmark_Ref") != r.get("Type")]
+    if refs:
+        ref_csv = f"{os.path.splitext(os.path.basename(chunk_list_file))[0]}_landmark_refs_v7r4.csv"
+        with open(os.path.join(base_dir, ref_csv), 'w', newline='') as csvfile:
+            writer = csv.DictWriter(csvfile, fieldnames=["Simulation_ID", "Directory", "File", "Chain", "Type", "Landmark_Ref"],
+                                    extrasaction='ignore')
+            writer.writeheader()
+            writer.writerows(refs)
 
     run(session, "quit")
 
