@@ -47,7 +47,12 @@ def report_name_variants():
     landmark indices cannot tell these apart -- they are positions in each entry's own sequence
     and shift with every construct start -- so compare the sequences: a variant that differs
     from NAME only by gaps is reported as such; substituted positions are counted. NAME is
-    whichever sequence extract_fasta met first, so the comparison is against that one. An isoform
+    whichever sequence extract_fasta met first, so the comparison is against that one.
+    The FASTA joins resolved residues across disorder gaps with no marker, so a substitution
+    next to a gap can be aligned as part of the gap: the count is a LOWER bound, and
+    "no substitution found" is not proof of none (on 1OL5 vs 8PR7, C290A sits right after
+    8PR7's gap and is missed -- 5 counted, 6 true). Residue numbers would settle it; the FASTA
+    does not carry them. An isoform
     that only DELETES residues also looks like gaps; only the operator can say.
     Informational: never stops the run.
     """
@@ -76,8 +81,10 @@ def report_name_variants():
             # Equal-length replace blocks only: an unequal block is a gap edge the aligner could
             # place either way (seen on two copies of one crystal construct), not a substitution.
             subs = sum(i2 - i1 for op, i1, i2, j1, j2 in ops if op == "replace" and i2 - i1 == j2 - j1)
-            what = "gaps/ends only" if subs == 0 else f"{subs} substituted position(s)"
+            what = "no substitution found" if subs == 0 else f">= {subs} substituted position(s)"
             print(f"      {h:<16} {len(s):5d} aa  vs {base}: {what}")
+    print("    (Compared as sequences, without residue numbers: a substitution next to a disorder")
+    print("    gap can be read as part of the gap, so counts are lower bounds.)")
     print(f"    Chain-to-entry assignments: {REFS_CSV_NAME}. If these are isoforms, constructs or")
     print("    mutants you want kept apart, name them NAME-variant in proteins.yaml and re-run.")
 
