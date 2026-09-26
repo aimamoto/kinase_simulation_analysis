@@ -2,7 +2,7 @@
 
 **Created:** 2026-09-02. **Updated: 2026-09-19 — Items 1, 2 and 5 are ACTIONED in the repo
 (staged for the editor, not sent); Item 4, cosmetic and repo-only, is cleared. 2026-09-26 — Item 6
-(the `Type` definition) added, OPEN.**
+(the `Type` definition) and Item 7 (`README.md` has no v7r4 section) added, both OPEN.**
 
 > **Status as of 2026-09-18.** Items 1 and 2 have been applied to
 > `docs/AlloQuant_master_CSV_data_dictionary_v7r3.xlsx`/`.pdf`, together with a third
@@ -153,6 +153,48 @@ Items 1, 2 and 5 only if the S1 Dataset is being re-supplied anyway.
 * `multimer_core_engine.R:211` rebuilds `Condition_reviewed` by finding `tolower(Type)` inside the
   condition text, so a chain whose name is not spelled out in its condition string keeps its
   designed apo/holo state without any warning.
+
+## Item 7 — `README.md` has no v7r4 section  ⏳ OPEN (found 2026-09-26)
+
+**Repo only, not part of the submission.** Merging `v7r4-bugfix` into `main` (after this branch)
+brings in the three v7r4 files but not a README that describes them. `README.md` on
+`v7r4-bugfix` never mentions v7r4. Its title, Deployment and Two-Stage Workflow commands, Outputs,
+Documentation, Repository Layout and Runtime Working Directory all name only the v7r3 files
+(lines 1, 6, 52–91, 99–110, 121–155 at `756e478`). Right now the v7r4 changes are recorded only in
+the UPDATE LOG header of `scripts/modules/chimerax_hmm_worker_v7r4.py`. The README of the local
+deployment copy (`../alloquant_module1_v7r4/`, outside every repository) is written for that
+copy and does **not** replace this one, although parts of it can be reused.
+
+**What the section needs:**
+* **Two versions, and which is which.** Line 30 says "v7r3 is the only version shipped here and
+  is the version of record for every published result". The second half stays true. The first
+  must change: v7r3 remains frozen and byte-identical, and v7r4 is the recommended version for
+  new runs.
+* **What v7r4 fixes**, so a user can tell whether their v7r3 output is affected:
+  (1) whole arms silently dropped at exit 0 when the landmark name gate matches nothing
+  (`c91474a`); (2) worker failures propagated, model coverage asserted, and the chunk directory
+  kept on failure (`c91474a`, `dfe90c7`); (3) `NAME_n` landmark entries, where one name covers
+  several sequences, now measured with their own map instead of the bare `NAME`'s (`6d638ee`),
+  with `Type` still reading `NAME` (`91858a6`).
+* **The value statement, stated exactly.** v7r4 changes no reported value **except** for runs
+  whose `sequences.fasta` has `NAME_n` kinase entries. For those runs v7r4 is correct and v7r3
+  is not. None of the published datasets has such entries (checked 2026-09-26), so every
+  published number stands. The label stays v7r4 on purpose (Akira, 2026-09-26), because the
+  difference depends on the run, not on the version.
+* **New outputs:** `landmark_refs_v7r4.csv` (only when a chain used a `NAME_n` entry) and the
+  printed variant table, whose substitution counts are lower bounds (`756e478`). The v7r4
+  output filenames (`hmm_…_v7r4.csv`, `master_…_v7r4.csv`) belong in Outputs, Repository Layout
+  and Runtime Working Directory.
+* **Naming rule:** isoforms, constructs or mutants that should stay apart in Part 2 need
+  distinct `NAME-variant` names in `proteins.yaml`. `Type` carries the operator's name (see Item 6).
+* **Still the operator's job in v7r4:** `run_step` still calls `python3` directly, so activate the
+  environment first. Count rows against the design, because v7r4 checks model coverage, not the
+  experimental design.
+
+**Related:** `docs/AlloQuant_output_file_manifest_v7r3` and the data dictionary are v7r3
+documents. Decide whether v7r4 gets its own versions or a note on the v7r3 ones. The master CSV
+schema is unchanged, so the dictionary needs only Item 6. The manifest lacks
+`landmark_refs_v7r4.csv` and the v7r4 filenames.
 
 ---
 
