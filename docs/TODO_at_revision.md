@@ -2,7 +2,9 @@
 
 **Created:** 2026-09-02. **Updated: 2026-09-19 — Items 1, 2 and 5 are ACTIONED in the repo
 (staged for the editor, not sent); Item 4, cosmetic and repo-only, is cleared. 2026-09-26 — Item 6
-(the `Type` definition) and Item 7 (`README.md` has no v7r4 section) added, both OPEN.**
+(the `Type` definition) and Item 7 (`README.md` has no v7r4 section) added, both OPEN. 2026-09-27 —
+Item 8 (Module 2: `Spine_Bridge_Dist` in the state discovery) added, OPEN.** **Item 8 is not
+documentation: it changes reported state-level results. Read it before the others.**
 
 > **Status as of 2026-09-18.** Items 1 and 2 have been applied to
 > `docs/AlloQuant_master_CSV_data_dictionary_v7r3.xlsx`/`.pdf`, together with a third
@@ -25,8 +27,15 @@ revision, alongside the response to reviewers.
 
 ## Bottom line first
 
-**No reported number changes. Nothing here is an erratum.** Every item is a prose/description
-defect in documentation. The pipeline code is correct, and every value in
+**Items 1–7: no reported number changes, and nothing there is an erratum.** Each is a
+prose/description defect in documentation.
+
+**Item 8 is different.** It is a Module 2 analysis defect that changes the published CSK and SRC
+metastable states (and so Fig 4B/C labels, Fig 6 state names, Fig S7 and Suppl. Note 10/Table 7).
+The Fig 4B/4C conclusions survive the fix, and CDK1 is largely unaffected. See Item 8 for the
+evidence and the per-element impact. Everything below about Items 1–7 still holds.
+
+For Items 1–7: the pipeline code is correct, and every value in
 `master_kinase_analysis_results_v7r3.csv`, the `Phase*` tables, the figures and the paper is
 unaffected. Items 1, 2 and 5 sit inside a submitted supplementary file (S1 Dataset); each is a
 single sentence, and Items 1 and 2 contradict the same document's own per-column text. Item 5
@@ -195,6 +204,88 @@ copy and does **not** replace this one, although parts of it can be reused.
 documents. Decide whether v7r4 gets its own versions or a note on the v7r3 ones. The master CSV
 schema is unchanged, so the dictionary needs only Item 6. The manifest lacks
 `landmark_refs_v7r4.csv` and the v7r4 filenames.
+
+
+## Item 8 — Module 2: `Spine_Bridge_Dist` enters state discovery with two definitions  ⏳ OPEN (found 2026-09-27)
+
+**Not documentation. It changes reported results at the state level.** Found while running
+Module 2 on a new AF3 condition set (Aur A ± TPX2 ± CEP192 ± pT ± ATP·Mg), where every GMM state
+was either all-apo or all-holo.
+
+**The defect.** Module 1 computes `Spine_Bridge_Dist` as the αC–β4 loop to the **ligand** when
+one is bound, and to the **k−3 (β3) residue** when none is. This is documented in S1 (row 35:
+"fallback for apo"), so the *metric* is disclosed correctly. The two branches measure different
+things on different scales (medians CDK1 3.91 vs 7.92 Å, CSK 4.15 vs 7.54, SRC 4.12 vs 7.72).
+`multimer_core_engine.R` (v7r1) blanks ligand columns in apo chains only when their names match
+`ATP|Mg` (line 304 on `main`), so `Spine_Bridge_Dist`:
+1. enters the PCA/GMM feature set (`universal_dist_cols`), which separates apo from holo chains
+   by construction;
+2. is tested across apo-vs-holo groups as one quantity. It ranks 1st–2nd in most published
+   CDK1 apo-vs-holo Phase 8 contrasts (p.adj ≈ 1e-33); that ranking comes from the definition,
+   not biology;
+3. enters per-state MAC wherever a state mixes apo and holo chains.
+
+**Evidence** (outside this repo; nothing here changed):
+- `../alloquant_spine_bridge_check_2026-09-27/NOTE_spine_bridge_published_runs.md`. All three
+  published Module 2 runs were reproduced exactly (state labels identical: CDK1 600/600, CSK
+  795/795, SRC 795/795), then repeated with the column dropped.
+- `../SRC/af3_output/260927_spine_bridge_masked_engine_test/README.md`. Engine copy with the
+  one-line mask fix, run on the deposited CSK–SRC 260718 data. Per-figure comparison in
+  `compare_report.txt`.
+
+| run | states pub → fixed | ARI | Cramér's V, state ~ apo/holo |
+|---|---|---|---|
+| CDK1 | 7 → 8 | 0.81 | 0.96 → 0.93 (the split is real conformation) |
+| CSK | 8 → 5 | 0.62 | 0.73 → 0.21 |
+| SRC | 7 → 5 | 0.58 | 0.93 → 0.38 |
+
+**Impact by manuscript element** (masked engine vs published):
+
+| element | effect |
+|---|---|
+| Fig 4A, pooled MAC per condition | holo conditions unchanged; apo conditions ≈ −0.007 (CSK apo/apo 0.134 → 0.127). "CSK rises on priming, SRC flat" unchanged |
+| Fig 4B, "pY419 flips SRC state" | **conclusion holds**: both-ATP and primed SRC still occupy disjoint state sets. Labels change; the main primed state (old S8) now shares a state with apo SRC |
+| Fig 4C, state handshake | **conclusion holds, stronger**: primed V 0.44 → 0.58 (p 4e-6 → 3e-16); unprimed n.s. (0.26 → 0.19). Axis labels change |
+| Fig 6 | the representative models and their SB distances are unchanged; only their state names change (CSK 3→5, 9→3, 5→4; SRC 8→4) |
+| Fig S7 (SRC State 4 vs 7/8) | **must be redone**: old S8 merges with apo SRC and old S4 splits, so the contrasts no longer exist as defined |
+| Suppl. Note 10 / Table 7 (per-state MAC) | recompute on the new states |
+| Fig 2C (CDK1 state composition) | light check: States 4/5/6/8 map 1:1, State 1 mostly; States 7 and 9 re-split |
+| Any text naming `Spine_Bridge` as an apo/holo discriminator | remove or qualify |
+
+**Not affected:** every Module 1 value and the S1 Dataset; within-condition analyses (the engine
+appends the physical ligand state to each condition, so no published condition mixes apo and
+holo chains, 0/7 for CSK and SRC), including the paired-coupling figure and per-condition MAC
+among holo conditions.
+
+**Fix: repo side.**
+1. Engine: add `Spine_Bridge` to the apo mask:
+   `ligand_cols <- grep("ATP|Mg|Spine_Bridge", all_numeric_cols, ignore.case = TRUE, value = TRUE)`.
+   Ship it as a **new** engine version so v7r1 stays byte-identical for the published outputs
+   (the same policy as v7r3/v7r4), and have the driver call it.
+2. Longer term, in a future Module 1 version: split the column into `Spine_Bridge_Ligand_Dist`
+   and `Spine_Bridge_B3_Dist` (a schema change: S1 Dataset and data dictionary).
+3. Regenerate `data/csk_src_dimer_260718/plots_and_stats_{CSK,SRC}_GMM` (and CDK1 if the paper
+   adopts the fixed engine everywhere) with the new engine, including Phase 8 for the new SRC
+   state pairs. **`data/MANIFEST_md5.txt` must then be rebuilt** (Item 3 applies: files under
+   `data/` change).
+4. Figure scripts hard-code state names and must be updated: `figures/fig4_model2.py`
+   (`src_states`, `SRC_ROWS`, `CSK_COLS`, the V values in the panel titles), `figures/compose_fig6.py`
+   (docstring state names), `figures/figS7_src_state_volcanos.py` (`PAIRS`).
+5. README: record the fix and the value statement (which outputs change and why) in the section
+   for the new engine version, next to Item 7.
+
+**Fix: manuscript side.**
+1. Methods (Module 2): state that ligand-dependent distances, including `Spine_Bridge_Dist`, are
+   excluded from state discovery when apo and holo chains are pooled.
+2. Replace Fig 4B/C (labels, V values, legend footnote), Fig S7, and Suppl. Note 10/Table 7 with
+   the re-run outputs; rename the states in Fig 6 and its legend; check Fig 2C States 7/9.
+3. Response to reviewers: disclose it as a correction found by the authors after submission. The
+   conclusions of Fig 4B/C are unchanged (4C strengthens); the state labels and the S7 contrasts
+   change.
+
+**Related, not fixed (decide at revision):** because the ATP/Mg columns are masked in apo chains,
+per-condition MAC is already computed on different column sets for apo and holo conditions (Fig
+4A compares them). Report that or equalise the feature set.
 
 ---
 
