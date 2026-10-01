@@ -88,6 +88,44 @@ def report_name_variants():
     print(f"    Chain-to-entry assignments: {REFS_CSV_NAME}. If these are isoforms, constructs or")
     print("    mutants you want kept apart, name them NAME-variant in proteins.yaml and re-run.")
 
+def report_beta3_lys():
+    """v7r4 (2026-10-01). Say when the beta3-Lys landmark `k` is missing or is not a K.
+
+    `k` is Pkinase node 30, the invariant beta3 Lys. extract_fasta joins resolved residues
+    across disorder gaps with no marker, so a gap in the glycine loop or beta3-aC segment can
+    shift node 30 or leave it unaligned; a mutation of the Lys itself removes the alignment's
+    anchor. Found on EGFR crystal structures: 3GOP (K721M; G-loop and beta3-aC disordered) gives
+    k = null, 2GS2 (WT; 723-725 disordered) gives k = P717. When k is null, D1/D2 (so Spatial and
+    State), C_Helix and SB_Dist are N/A, and analyze_dimer_interface falls back to a DFG-based
+    lobe split that can call a Receiver/Activator pair Symmetric. When k is misplaced, D2,
+    C_Helix, SB_Dist and Spine_Bridge_Dist are measured from the wrong residue. A non-K at k can
+    also be genuine (a K-to-M kinase-dead construct, WNK family), so this cannot be told apart
+    from the sequence alone: the operator checks the reported residue.
+    Informational: never stops the run, and no reported value changes.
+    """
+    if not (os.path.exists("sequences.fasta") and os.path.exists("hmm_landmarks.json")): return
+    seqs = read_fasta("sequences.fasta")
+    with open("hmm_landmarks.json") as f: lms = json.load(f)
+    flagged = []
+    for h, v in sorted(lms.items()):
+        if not (isinstance(v, dict) and v.get("f") is not None): continue
+        k, s = v.get("k"), seqs.get(h, "")
+        if k is None: flagged.append((h, "no residue aligned to the beta3 Lys (Pkinase node 30)"))
+        elif not (0 <= k < len(s)): flagged.append((h, f"k = {k} is outside the {len(s)}-aa sequence"))
+        elif s[k] != "K":
+            ctx = s[max(0, k - 5):k] + "[" + s[k] + "]" + s[k + 1:k + 6]
+            flagged.append((h, f"k = sequence position {k + 1} is {s[k]}, not K   ...{ctx}..."))
+    if not flagged: return
+
+    print("\n[!] ALERT: the invariant beta3 Lys was not found at landmark `k` for:")
+    for h, why in flagged:
+        print(f"      {h:<16} {why}")
+    print("    D2_Dist, C_Helix, SB_Dist and Spine_Bridge_Dist depend on k; with k missing, Spatial,")
+    print("    State and the dimer Role also become unreliable (a Receiver/Activator pair can read")
+    print("    Symmetric). Usual causes: disorder gaps near the glycine loop or beta3-aC (the FASTA")
+    print("    joins resolved residues with no gap marker), or a mutated Lys (e.g. kinase-dead K-to-M).")
+    print("    Check these rows before use. The run continues; no value is changed.")
+
 def merge_landmark_refs():
     # v7r4: merge the workers' landmark_refs side files (written only when a chain used a NAME_n
     # entry); remove any stale merged file first so it always describes this run.
@@ -241,6 +279,7 @@ def main():
 
     ensure_hmm_landmarks()
     report_name_variants()
+    report_beta3_lys()
     cif_files = filter_cif_files(glob.glob("**/*.cif", recursive=True))
     if not cif_files: sys.exit(1)
 
