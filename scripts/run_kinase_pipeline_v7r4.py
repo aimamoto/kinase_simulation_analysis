@@ -109,6 +109,61 @@ def merge_csv_results(geom_csv, af3_csv, final_out_csv):
     if os.path.exists(geom_csv): os.remove(geom_csv)
     print(f"✅ Final comprehensive dataset compiled: {final_out_csv}")
 
+def find_af3_confidence_files(root="."):
+    # AF3 confidence side files under any naming: local runs write summary_confidences.json /
+    # <job>_summary_confidences.json / confidences.json, the AF3 server writes
+    # fold_<job>_summary_confidences_0.json and fold_<job>_full_data_0.json.
+    found = []
+    for dirpath, dirs, files in os.walk(root):
+        dirs[:] = [d for d in dirs if not d.startswith('.') and not d.lower().startswith('archive')
+                   and d not in (MODULE_DIR, "temp_chimerax_chunks", "temp_fasta_chunks")]
+        for f in files:
+            fl = f.lower()
+            if fl.endswith(".json") and ("confidences" in fl or "full_data" in fl):
+                found.append(os.path.join(dirpath, f))
+    return sorted(found)
+
+def resolve_missing_af3(af3_csv, max_chains):
+    """v7r4 (2026-10-01). Tell non-AF3 input apart from AF3 output under other names.
+
+    extract_af3_metrics.py writes nothing when it finds no file literally named `model.cif`
+    (B12.1), and since B12.6 item 1 the merge stops on a missing AF3 file. Together they failed
+    every MD-trajectory and experimental-structure run at the last step, with the geometry
+    complete (seen on 3D7T and the AURKA-TPX2 MD run; v7r3 ended at the geometry CSV instead).
+    With no AF3 confidence files anywhere, the input is not AF3: write a header-only AF3 table so
+    the merge fills ipTM/pTM/PAE with N/A and the run completes. With confidence files present
+    under other names, the AF3 metrics really are being lost, which is the case the hard stop is
+    for: stop and say how to fix it.
+    """
+    if os.path.exists(af3_csv): return
+    conf = find_af3_confidence_files(".")
+    if conf:
+        print("\nERROR: AF3 confidence files found but no 'model.cif' -- non-standard AF3 file names (B12.1).",
+              file=sys.stderr)
+        for p in conf[:5]:
+            print(f"         {p}", file=sys.stderr)
+        if len(conf) > 5:
+            print(f"         ... and {len(conf) - 5} more", file=sys.stderr)
+        print("       ipTM/pTM/PAE would be lost. Rename each model to model.cif with summary_confidences.json and",
+              file=sys.stderr)
+        print("       confidences.json beside it, or remove the JSON files if AF3 metrics are not wanted.",
+              file=sys.stderr)
+        print("       The geometry CSV hmm_kinase_analysis_results_v7r4.csv is complete and has been kept.",
+              file=sys.stderr)
+        sys.exit(1)
+
+    # Same column names as extract_af3_metrics.py builds for this chain count.
+    labels = ['A', 'B', 'C', 'D'][:max_chains]
+    fields = ["Directory", "ipTM", "pTM"]
+    for i in range(len(labels)):
+        for j in range(i + 1, len(labels)):
+            fields += [f"PAE_{labels[i]}_to_{labels[j]}", f"PAE_{labels[j]}_to_{labels[i]}",
+                       f"PAE_Mean_{labels[i]}{labels[j]}"]
+    with open(af3_csv, 'w', newline='') as f:
+        pycsv.writer(f).writerow(fields)
+    print("[i] No AF3 models ('model.cif') found and no AF3 confidence files present -- treating input as")
+    print("    non-AF3 (MD / experimental). ipTM, pTM and PAE columns will be N/A.")
+
 def main():
     parser = argparse.ArgumentParser(description="Kinase Structural Pipeline Wrapper v7")
     parser.add_argument("--resume", action="store_true", help="Skip discovery and resume from CSV audit")
@@ -203,6 +258,7 @@ def main():
     
     # AF3 Metrics
     run_step(SCRIPT_AF3_METRICS, ["--dir", ".", "--max-chains", str(args.max_chains), "--out", "temp_af3_metrics.csv"], "Extracting AF3 ipTM and PAE metrics")
+    resolve_missing_af3("temp_af3_metrics.csv", args.max_chains)
 
     # Final Merge Execution
     merge_csv_results(
