@@ -4,7 +4,8 @@
 (staged for the editor, not sent); Item 4, cosmetic and repo-only, is cleared. 2026-09-26 — Item 6
 (the `Type` definition) and Item 7 (`README.md` has no v7r4 section) added, both OPEN. 2026-09-27 —
 Item 8 (Module 2: `Spine_Bridge_Dist` in the state discovery) added, OPEN. 2026-10-01 — Item 9
-(`HRD_ATP_Dist`: which phosphate group, and thio-phosphates) added, OPEN.** **Item 8 is not
+(`HRD_ATP_Dist`: which phosphate group, and thio-phosphates) added, OPEN; Item 7 brought up to date with
+the v7r4 commits of 2026-10-01.** **Item 8 is not
 documentation: it changes reported state-level results. Read it before the others.**
 
 > **Status as of 2026-09-18.** Items 1 and 2 have been applied to
@@ -186,20 +187,41 @@ copy and does **not** replace this one, although parts of it can be reused.
   kept on failure (`c91474a`, `dfe90c7`); (3) `NAME_n` landmark entries, where one name covers
   several sequences, now measured with their own map instead of the bare `NAME`'s (`6d638ee`),
   with `Type` still reading `NAME` (`91858a6`).
+  Added 2026-10-01, none of which changes a reported value (`erbb_dimer_complex/BLOCKERS.md`
+  B12.1, B12.8, B12.9):
+  (4) an ALERT when the β3-Lys landmark `k` is missing or is not a K (`5c3eda1`). It names the
+  k-dependent columns (D2_Dist, C_Helix, SB_Dist, Spine_Bridge_Dist, and C_Spine where a nucleotide
+  is bound, `baa76fe`) and says Spatial, State and dimer Role become unreliable when `k` is missing.
+  Found on EGFR crystal structures with disorder near β3 (3GOP, 2GS2, 2GS6);
+  (5) runs with no AF3 output (MD frames, experimental structures) complete with ipTM/pTM/PAE = N/A.
+  Before this they stopped at the merge with the geometry complete, because `extract_af3_metrics.py`
+  only matches `model.cif` and v7r4 made a missing AF3 table fatal. AF3 output under non-standard
+  names still stops, with a message naming the files (B12.1, `74dac6d`);
+  (6) cxc macros show the ligands and ions actually bound, using ChimeraX's `ligand & ~protein` and
+  `ions` classes, and the legend names them. Before, only the nine `LIGAND_NAMES` were drawn and the
+  legend always promised "ATP / Magnesium" (`7c29860`).
 * **The value statement, stated exactly.** v7r4 changes no reported value **except** for runs
   whose `sequences.fasta` has `NAME_n` kinase entries. For those runs v7r4 is correct and v7r3
   is not. None of the published datasets has such entries (checked 2026-09-26), so every
   published number stands. The label stays v7r4 on purpose (Akira, 2026-09-26), because the
   difference depends on the run, not on the version.
+  The 2026-10-01 additions (4)–(6) change no value. Masters were byte-identical on 3D7T, the
+  AURKA–TPX2 MD run (4379 frames), a CDK1–CCNB1 AF3 subset, and EGFR 2GS2 / 2GS6 / 3GOP. For
+  non-AF3 runs the visible difference is that a master CSV is now written, and the run exits 0.
 * **New outputs:** `landmark_refs_v7r4.csv` (only when a chain used a `NAME_n` entry) and the
   printed variant table, whose substitution counts are lower bounds (`756e478`). The v7r4
   output filenames (`hmm_…_v7r4.csv`, `master_…_v7r4.csv`) belong in Outputs, Repository Layout
-  and Runtime Working Directory.
+  and Runtime Working Directory. From 2026-10-01: the β3-Lys ALERT and the
+  `[i] No AF3 models … treating input as non-AF3` line in the console log; the master CSV is now
+  written for non-AF3 runs; the cxc legend line varies with what is bound.
 * **Naming rule:** isoforms, constructs or mutants that should stay apart in Part 2 need
   distinct `NAME-variant` names in `proteins.yaml`. `Type` carries the operator's name (see Item 6).
 * **Still the operator's job in v7r4:** `run_step` still calls `python3` directly, so activate the
   environment first. Count rows against the design, because v7r4 checks model coverage, not the
-  experimental design.
+  experimental design. When the β3-Lys ALERT fires, check the named columns for those chains
+  before use. v7r4 reports the problem but does not correct `k`; X-fill alignment and a manual `k`
+  override are held for v7r5 (B12.8). AF3-server file names (B12.1/B12.2) still have to be renamed
+  by hand.
 
 **Related:** `docs/AlloQuant_output_file_manifest_v7r3` and the data dictionary are v7r3
 documents. Decide whether v7r4 gets its own versions or a note on the v7r3 ones. The master CSV
