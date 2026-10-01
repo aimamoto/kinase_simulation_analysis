@@ -98,7 +98,10 @@ def report_beta3_lys():
     k = null, 2GS2 (WT; 723-725 disordered) gives k = P717. When k is null, D1/D2 (so Spatial and
     State), C_Helix and SB_Dist are N/A, and analyze_dimer_interface falls back to a DFG-based
     lobe split that can call a Receiver/Activator pair Symmetric. When k is misplaced, D2,
-    C_Helix, SB_Dist and Spine_Bridge_Dist are measured from the wrong residue. A non-K at k can
+    C_Helix, SB_Dist and Spine_Bridge_Dist are measured from the wrong residue, and so is C_Spine
+    when a nucleotide is bound (it tests residues k-3..k, the VAIK motif, against the ligand: on 2GS6
+    the shifted window 714-717 read "Ligand Distant" at 7.96 A while VAIK 718-721 is 2.92 A from the
+    ATP analogue; added 2026-10-01). A non-K at k can
     also be genuine (a K-to-M kinase-dead construct, WNK family), so this cannot be told apart
     from the sequence alone: the operator checks the reported residue.
     Informational: never stops the run, and no reported value changes.
@@ -120,8 +123,9 @@ def report_beta3_lys():
     print("\n[!] ALERT: the invariant beta3 Lys was not found at landmark `k` for:")
     for h, why in flagged:
         print(f"      {h:<16} {why}")
-    print("    D2_Dist, C_Helix, SB_Dist and Spine_Bridge_Dist depend on k; with k missing, Spatial,")
-    print("    State and the dimer Role also become unreliable (a Receiver/Activator pair can read")
+    print("    D2_Dist, C_Helix, SB_Dist and Spine_Bridge_Dist depend on k, and so does C_Spine where a")
+    print("    nucleotide is bound (it tests the VAIK residues k-3..k against the ligand). With k missing,")
+    print("    Spatial, State and the dimer Role also become unreliable (a Receiver/Activator pair can read")
     print("    Symmetric). Usual causes: disorder gaps near the glycine loop or beta3-aC (the FASTA")
     print("    joins resolved residues with no gap marker), or a mutated Lys (e.g. kinase-dead K-to-M).")
     print("    Check these rows before use. The run continues; no value is changed.")
