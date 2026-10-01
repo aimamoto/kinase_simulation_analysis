@@ -75,6 +75,13 @@ from chimerax.core.commands import run
 #    reported. The entry actually used goes to landmark_refs_v7r4.csv (written only when some
 #    chain used a NAME_n entry), so the master CSV keeps its columns. To keep isoforms or
 #    constructs apart in Module 2, name them NAME-variant in proteins.yaml.
+# 5. (2026-10-01) cxc macros show what is bound. VISUALISATION ONLY -- no CSV value changes.
+#    The ligand block was written only when a residue matched LIGAND_NAMES, its show/color
+#    commands repeated that name list, and the 'ATP / Magnesium' legend was written always. On
+#    2GS6 (ATP analogue `112` on the substrate peptide, no Mg) the macro showed no ligand under
+#    a legend promising ATP and Mg. The block now uses ChimeraX's own classes (`ligand & ~protein`,
+#    which excludes short peptides ChimeraX also calls ligand, and `ions`), and the legend names
+#    what is present. Metrics still use LIGAND_NAMES, so 112 still gets N/A ATP distances.
 #
 # UPDATE LOG (v7r2 -> v7r3)   *** CHANGES REPORTED VALUES -- NOT A DROP-IN FOR v7r2 ***
 # Date: July 29, 2026
@@ -574,6 +581,14 @@ def process_model(session, full_cif_path: str, base_dir: str, out_dir_core: str,
     cids = sorted(list(set(model.residues.chain_ids)))
     ligand_mask = np.isin(np.array(model.residues.names), LIGAND_NAMES)
     ligands = model.residues[ligand_mask]
+
+    # v7r4 (UPDATE LOG item 5): what the cxc macros display and the legend names. Display only;
+    # `ligands` above still decides which residues the metrics treat as the nucleotide.
+    atom_cats = model.atoms.structure_categories
+    def _het_names(category):
+        rs = model.atoms[atom_cats == category].unique_residues
+        return sorted({r.name for r in rs if r.polymer_type == 0})   # 0 = PT_NONE: skip peptide residues
+    disp_lig_names, disp_ion_names = _het_names('ligand'), _het_names('ions')
     
     chain_data = {}
     cofactors = {}
@@ -901,8 +916,7 @@ def process_model(session, full_cif_path: str, base_dir: str, out_dir_core: str,
         "2dlabels create leg_rspine text 'R-Spine' color medium purple size 16 xpos 0.80 ypos 0.77",
         "2dlabels create leg_sb text 'Salt Bridge (K-C)' color spring green size 16 xpos 0.80 ypos 0.74",
         "2dlabels create leg_cat text 'Catalytic HRD-Asp' color red size 16 xpos 0.80 ypos 0.71",
-        "2dlabels create leg_dfg text 'DFG-Asp Coordination' color dodger blue size 16 xpos 0.80 ypos 0.68",
-        "2dlabels create leg_lig text 'ATP / Magnesium' color gold size 16 xpos 0.80 ypos 0.65"
+        "2dlabels create leg_dfg text 'DFG-Asp Coordination' color dodger blue size 16 xpos 0.80 ypos 0.68"
     ]
 
     cxc_allo = [
@@ -915,9 +929,19 @@ def process_model(session, full_cif_path: str, base_dir: str, out_dir_core: str,
         "2dlabels create leg_title text 'Color Legend:' color white size 20 bold true xpos 0.80 ypos 0.86",
         "2dlabels create leg_acb4 text 'aC-b4 Loop (Allosteric Bridge)' color hot pink size 16 xpos 0.80 ypos 0.83",
         "2dlabels create leg_ae text 'aE Helix (Core Anchor)' color yellow size 16 xpos 0.80 ypos 0.80",
-        "2dlabels create leg_cat text 'Catalytic HRD-Asp' color red size 16 xpos 0.80 ypos 0.77",
-        "2dlabels create leg_lig text 'ATP / Magnesium' color gold size 16 xpos 0.80 ypos 0.74"
+        "2dlabels create leg_cat text 'Catalytic HRD-Asp' color red size 16 xpos 0.80 ypos 0.77"
     ]
+
+    # v7r4 (UPDATE LOG item 5): name what is actually bound, or say nothing.
+    lig_parts = []
+    if disp_lig_names: lig_parts.append("Ligand " + ", ".join(disp_lig_names))
+    if "MG" in disp_ion_names: lig_parts.append("Mg2+")
+    other_ions = [n for n in disp_ion_names if n != "MG"]
+    if other_ions: lig_parts.append("Ions " + ", ".join(other_ions))
+    if lig_parts:
+        lig_legend = " / ".join(lig_parts)
+        cxc_core.append(f"2dlabels create leg_lig text '{lig_legend}' color gold size 16 xpos 0.80 ypos 0.65")
+        cxc_allo.append(f"2dlabels create leg_lig text '{lig_legend}' color gold size 16 xpos 0.80 ypos 0.74")
 
     if cofactors:
         cxc_core.append("2dlabels create leg_cofactor text 'Steric Co-Factor' color dark cyan size 16 xpos 0.80 ypos 0.62")
@@ -927,14 +951,16 @@ def process_model(session, full_cif_path: str, base_dir: str, out_dir_core: str,
             cxc_core.extend([f"color {spec} dark cyan", f"transparency {spec} 30 cartoons"])
             cxc_allo.extend([f"color {spec} dark cyan", f"transparency {spec} 30 cartoons"])
 
-    if len(ligands) > 0:
-        lig_cmds = [
-            "\n# --- Ligands & Interactions ---", "show :ATP,ADP,ANP,ACP,AGS,AMP,GTP,GDP,STU",
-            "color :ATP,ADP,ANP,ACP,AGS,AMP,GTP,GDP,STU byhetero", "color :ATP,ADP,ANP,ACP,AGS,AMP,GTP,GDP,STU@C* gold",
-            "label :ATP,ADP,ANP,ACP,AGS,AMP,GTP,GDP,STU residues color gold height 1.5",
-            "hbonds :ATP,ADP,ANP,ACP,AGS,AMP,GTP,GDP,STU restrict protein color cyan radius 0.05",
-            "show :MG", "color :MG green", "style :MG sphere", "size :MG atomRadius 1.0"
-        ]
+    if disp_lig_names or disp_ion_names:
+        lig_cmds = ["\n# --- Ligands & Interactions ---"]
+        if disp_lig_names:
+            lig = "(ligand & ~protein)"
+            lig_cmds += [f"show {lig}", f"color {lig} byhetero", f"color {lig} & C gold",
+                         f"label {lig} residues color gold height 1.5",
+                         f"hbonds {lig} restrict protein color cyan radius 0.05"]
+        if disp_ion_names:
+            lig_cmds += ["show ions", "style ions sphere", "size ions atomRadius 1.0"]
+            if "MG" in disp_ion_names: lig_cmds.append('color ::name="MG" green')
         cxc_core.extend(lig_cmds); cxc_allo.extend(lig_cmds)
 
     y_offset = 0.84
