@@ -3,7 +3,8 @@
 **Created:** 2026-09-02. **Updated: 2026-09-19 — Items 1, 2 and 5 are ACTIONED in the repo
 (staged for the editor, not sent); Item 4, cosmetic and repo-only, is cleared. 2026-09-26 — Item 6
 (the `Type` definition) and Item 7 (`README.md` has no v7r4 section) added, both OPEN. 2026-09-27 —
-Item 8 (Module 2: `Spine_Bridge_Dist` in the state discovery) added, OPEN.** **Item 8 is not
+Item 8 (Module 2: `Spine_Bridge_Dist` in the state discovery) added, OPEN. 2026-10-01 — Item 9
+(`HRD_ATP_Dist`: which phosphate group, and thio-phosphates) added, OPEN.** **Item 8 is not
 documentation: it changes reported state-level results. Read it before the others.**
 
 > **Status as of 2026-09-18.** Items 1 and 2 have been applied to
@@ -27,7 +28,7 @@ revision, alongside the response to reviewers.
 
 ## Bottom line first
 
-**Items 1–7: no reported number changes, and nothing there is an erratum.** Each is a
+**Items 1–7 and 9: no reported number changes, and nothing there is an erratum.** Each is a
 prose/description defect in documentation.
 
 **Item 8 is different.** It is a Module 2 analysis defect that changes the published CSK and SRC
@@ -286,6 +287,46 @@ among holo conditions.
 **Related, not fixed (decide at revision):** because the ATP/Mg columns are masked in apo chains,
 per-condition MAC is already computed on different column sets for apo and holo conditions (Fig
 4A compares them). Report that or equalise the feature set.
+
+## Item 9 — S1 Dataset: `HRD_ATP_Dist` measures one phosphate group, not "the ATP"  ⏳ OPEN (found 2026-10-01)
+
+**File:** same dictionary, the `HRD_ATP_Dist` row (cell `I47`); optionally `Substrate_Clearance_Angle` (`I43`).
+
+**It says (I47):** "Min distance from catalytic HRD-Asp (hrd+2) side-chain O*/N* to the ATP
+gamma/beta/alpha-phosphate group."
+
+**Why it is imprecise:** the code (`chimerax_hmm_worker_v7r3.py`, unchanged in v7r4) does not take
+the minimum over all three groups. It takes **one** group, the most terminal one present (γ if
+modelled, else β, else α), defined by fixed CCD atom names (`PG, O1G, O2G, O3G`, …), and reports the
+minimum distance to that group only. Read literally, "gamma/beta/alpha" suggests a minimum over all
+phosphates. With ATP the two readings usually coincide, because the γ group holds the atom closest
+to the Asp (CDK1–CCNB1 AF3 models: 3.94–4.16 Å, always a γ oxygen), but nothing guarantees it.
+Likewise, I43's "ATP-phosphate (phosphate atom as vertex)" is the **phosphorus of that same most
+terminal group** (γ-P for ATP).
+
+**Proposed wording (I47):** "Min distance from the catalytic HRD-Asp (hrd+2) side-chain O*/N* to the
+most terminal phosphate group of the bound nucleotide (γ if present, else β, else α; the phosphorus
+and its CCD-named oxygens). Requires a bound nucleotide; N/A on apo chains."
+**Optional (I43):** "…(vertex: the phosphorus of the most terminal phosphate group, γ-P for ATP)".
+
+**No reported number changes.** Every published dataset binds ATP·Mg (CDK1–CCNB1 260517, CSK–SRC
+260718, CSK monomer 260806; checked 2026-10-01 on up to 400 models per run), and 3D7T has
+staurosporine, so no published value depends on the wording or on the code issues below.
+
+**Related Module 1 code issues (not documentation; not fixed in v7r3/v7r4; published outputs
+unaffected).** Found on EGFR 2GS6 (`erbb_dimer_complex/BLOCKERS.md` B12.9):
+* **Thio-phosphates.** The fixed name lists omit the γ-sulfur `S1G` of ATP-γS (`AGS`, which *is* in
+  `LIGAND_NAMES`) and of other thio analogues, so for those ligands HRD_ATP_Dist can be non-minimal.
+  On a 30-chain Kincore-Active PDB set, 2 of 5 AGS chains change when S1G is included (5NZZ
+  6.54 → 4.63 Å, 8YHW 4.22 → 3.43); ATP and ANP rows are unaffected. The same lists feed
+  DFG_ATP_Dist and PLoop_ATP_Dist.
+* **Unlisted nucleotides.** Any ATP analogue outside the nine-code `LIGAND_NAMES` (e.g. 2GS6's
+  conjugate `112`) gets N/A for every nucleotide metric.
+* Both are drafted in the v7r5 testflight `tf1-7r5` (outside the repository; details in B12.9). The
+  intended v7r5 definition keeps "most terminal group" and adds any sulfur bonded to that group's
+  phosphorus. If v7r5 ships it, the I47 wording above should gain "(including thio substitutions)".
+* The acetamide linker of `112`, the analogue's closest atom to the Asp (4.81 Å), is deliberately
+  **not** phosphate and stays excluded under both definitions.
 
 ---
 
