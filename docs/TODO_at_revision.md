@@ -1,7 +1,14 @@
 # Deferred documentation corrections — action at manuscript revision
 
 **Created:** 2026-09-02. **Updated: 2026-09-19 — Items 1, 2 and 5 are ACTIONED in the repo
-(staged for the editor, not sent); Item 4, cosmetic and repo-only, is cleared.**
+(staged for the editor, not sent); Item 4, cosmetic and repo-only, is cleared. 2026-09-26 — Item 6
+(the `Type` definition) and Item 7 (`README.md` has no v7r4 section) added, both OPEN. 2026-09-27 —
+Item 8 (Module 2: `Spine_Bridge_Dist` in the state discovery) added, OPEN. 2026-10-01 — Item 9
+(`HRD_ATP_Dist`: which phosphate group, and thio-phosphates) added, OPEN; Item 7 brought up to date with
+the v7r4 commits of 2026-10-01. 2026-10-13 — Item 10 (full v7r4 rerun of the CSK–SRC 260718 set,
+the MD seed state crosswalk, AF3 MSA and compute-stack provenance) added; it confirms Item 7's value
+statement directly on CSK–SRC and shows that Item 8 alone renames the states.** **Item 8 is not
+documentation: it changes reported state-level results. Read it before the others.**
 
 > **Status as of 2026-09-18.** Items 1 and 2 have been applied to
 > `docs/AlloQuant_master_CSV_data_dictionary_v7r3.xlsx`/`.pdf`, together with a third
@@ -24,8 +31,15 @@ revision, alongside the response to reviewers.
 
 ## Bottom line first
 
-**No reported number changes. Nothing here is an erratum.** Every item is a prose/description
-defect in documentation. The pipeline code is correct, and every value in
+**Items 1–7, 9 and 10: no reported number changes, and nothing there is an erratum.** Items 1–7 and 9 are each a
+prose/description defect in documentation.
+
+**Item 8 is different.** It is a Module 2 analysis defect that changes the published CSK and SRC
+metastable states (and so Fig 4B/C labels, Fig 6 state names, Fig S7 and Suppl. Note 10/Table 7).
+The Fig 4B/4C conclusions survive the fix, and CDK1 is largely unaffected. See Item 8 for the
+evidence and the per-element impact. Everything below about Items 1–7 still holds.
+
+For Items 1–7: the pipeline code is correct, and every value in
 `master_kinase_analysis_results_v7r3.csv`, the `Phase*` tables, the figures and the paper is
 unaffected. Items 1, 2 and 5 sit inside a submitted supplementary file (S1 Dataset); each is a
 single sentence, and Items 1 and 2 contradict the same document's own per-column text. Item 5
@@ -118,6 +132,276 @@ raising with the editor.** No measured value in S1 Table changes. Full analysis:
 
 Also corrected in `README.md` (v7r3 release note #2) and the worker source comment — commits
 `346eefb` and `b1fc720` on branch `docs-cheatsheet-corrections`.
+
+## Item 6 — S1 Dataset: what `Type` is  ⏳ OPEN (found 2026-09-26)
+
+**File:** same dictionary, the `Type` row (cell `I22`).
+
+**It says:** "Kinase identity assigned by best sequence-identity match to the FASTA landmark set
+(get_best_landmark_for_chain)."
+
+**Why it is imprecise:** sequence identity picks *which landmark entry* measures the chain, but
+the value written is that entry's **name**. The name comes from `proteins.yaml` or the folder
+token, via `extract_fasta.py`, so `Type` encodes whatever the operator's name encodes: family
+(`CDK1`), allele (`CSK-WT`), or construct. It never encodes modification. The row's own second
+sentence (SRC pY159 reads `SRC-WT`) already shows this. Every consumer treats it as the
+operator's name: the Module 2 `TARGET_TYPE` filter, the `Condition_reviewed` join, and the addons'
+exact matches (`Type == 'CSK-WT'`). Found while fixing v7r4 (`6d638ee`, `91858a6` on
+`v7r4-bugfix`). There, one name covering several sequences (crystal copies, isoforms, constructs)
+produced dedup variants `NAME_1`, `NAME_2` …, and v7r4 now reports these as `NAME`.
+
+**Proposed wording:** "Protein name (from proteins.yaml / the folder token) of the FASTA landmark
+entry that best matches the chain's sequence (get_best_landmark_for_chain); its landmark positions
+are the ones used to measure this chain. Carries what the name carries (family, allele, construct),
+not modification: the SRC pY159 variant reads SRC-WT, and the pY159 vs WT distinction lives in
+Simulation_ID/Directory."
+
+**No reported number changes.** The published datasets have no dedup variants, so their `Type`
+values and every measured column are what v7r4 gives. This clarifies a definition; bundle it with
+Items 1, 2 and 5 only if the S1 Dataset is being re-supplied anyway.
+
+**Related Module 2 code issues (not documentation; not fixed; published outputs unaffected):**
+* `multimer_core_engine.R:276` selects the target by *prefix* (`^(?:[A-Z]-)?TARGET`), so `CDK1`
+  would also take `CDK10`/`CDK12`. No published dataset has two such names.
+* `multimer_core_engine.R:211` rebuilds `Condition_reviewed` by finding `tolower(Type)` inside the
+  condition text, so a chain whose name is not spelled out in its condition string keeps its
+  designed apo/holo state without any warning.
+
+## Item 7 — `README.md` has no v7r4 section  ⏳ OPEN (found 2026-09-26)
+
+**Repo only, not part of the submission.** Merging `v7r4-bugfix` into `main` (after this branch)
+brings in the three v7r4 files but not a README that describes them. `README.md` on
+`v7r4-bugfix` never mentions v7r4. Its title, Deployment and Two-Stage Workflow commands, Outputs,
+Documentation, Repository Layout and Runtime Working Directory all name only the v7r3 files
+(lines 1, 6, 52–91, 99–110, 121–155 at `756e478`). Right now the v7r4 changes are recorded only in
+the UPDATE LOG header of `scripts/modules/chimerax_hmm_worker_v7r4.py`. The README of the local
+deployment copy (`../alloquant_module1_v7r4/`, outside every repository) is written for that
+copy and does **not** replace this one, although parts of it can be reused.
+
+**What the section needs:**
+* **Two versions, and which is which.** Line 30 says "v7r3 is the only version shipped here and
+  is the version of record for every published result". The second half stays true. The first
+  must change: v7r3 remains frozen and byte-identical, and v7r4 is the recommended version for
+  new runs.
+* **What v7r4 fixes**, so a user can tell whether their v7r3 output is affected:
+  (1) whole arms silently dropped at exit 0 when the landmark name gate matches nothing
+  (`c91474a`); (2) worker failures propagated, model coverage asserted, and the chunk directory
+  kept on failure (`c91474a`, `dfe90c7`); (3) `NAME_n` landmark entries, where one name covers
+  several sequences, now measured with their own map instead of the bare `NAME`'s (`6d638ee`),
+  with `Type` still reading `NAME` (`91858a6`).
+  Added 2026-10-01, none of which changes a reported value (`erbb_dimer_complex/BLOCKERS.md`
+  B12.1, B12.8, B12.9):
+  (4) an ALERT when the β3-Lys landmark `k` is missing or is not a K (`5c3eda1`). It names the
+  k-dependent columns (D2_Dist, C_Helix, SB_Dist, Spine_Bridge_Dist, and C_Spine where a nucleotide
+  is bound, `baa76fe`) and says Spatial, State and dimer Role become unreliable when `k` is missing.
+  Found on EGFR crystal structures with disorder near β3 (3GOP, 2GS2, 2GS6);
+  (5) runs with no AF3 output (MD frames, experimental structures) complete with ipTM/pTM/PAE = N/A.
+  Before this they stopped at the merge with the geometry complete, because `extract_af3_metrics.py`
+  only matches `model.cif` and v7r4 made a missing AF3 table fatal. AF3 output under non-standard
+  names still stops, with a message naming the files (B12.1, `74dac6d`);
+  (6) cxc macros show the ligands and ions actually bound, using ChimeraX's `ligand & ~protein` and
+  `ions` classes, and the legend names them. Before, only the nine `LIGAND_NAMES` were drawn and the
+  legend always promised "ATP / Magnesium" (`7c29860`).
+* **The value statement, stated exactly.** v7r4 changes no reported value **except** for runs
+  whose `sequences.fasta` has `NAME_n` kinase entries. For those runs v7r4 is correct and v7r3
+  is not. None of the published datasets has such entries (checked 2026-09-26), so every
+  published number stands. The label stays v7r4 on purpose (Akira, 2026-09-26), because the
+  difference depends on the run, not on the version.
+  The 2026-10-01 additions (4)–(6) change no value. Masters were byte-identical on 3D7T, the
+  AURKA–TPX2 MD run (4379 frames), a CDK1–CCNB1 AF3 subset, and EGFR 2GS2 / 2GS6 / 3GOP. For
+  non-AF3 runs the visible difference is that a master CSV is now written, and the run exits 0.
+  **2026-10-13, confirmed on the manuscript's own CSK–SRC set** (Item 10): v7r4 (`baa76fe`) on all
+  800 models of 260718 gives a master identical to the deposited v7r3 one (48 columns × 1,600 rows).
+* **New outputs:** `landmark_refs_v7r4.csv` (only when a chain used a `NAME_n` entry) and the
+  printed variant table, whose substitution counts are lower bounds (`756e478`). The v7r4
+  output filenames (`hmm_…_v7r4.csv`, `master_…_v7r4.csv`) belong in Outputs, Repository Layout
+  and Runtime Working Directory. From 2026-10-01: the β3-Lys ALERT and the
+  `[i] No AF3 models … treating input as non-AF3` line in the console log; the master CSV is now
+  written for non-AF3 runs; the cxc legend line varies with what is bound.
+* **Naming rule:** isoforms, constructs or mutants that should stay apart in Part 2 need
+  distinct `NAME-variant` names in `proteins.yaml`. `Type` carries the operator's name (see Item 6).
+* **Still the operator's job in v7r4:** `run_step` still calls `python3` directly, so activate the
+  environment first. Count rows against the design, because v7r4 checks model coverage, not the
+  experimental design. When the β3-Lys ALERT fires, check the named columns for those chains
+  before use. v7r4 reports the problem but does not correct `k`; X-fill alignment and a manual `k`
+  override are held for v7r5 (B12.8). AF3-server file names (B12.1/B12.2) still have to be renamed
+  by hand.
+
+**Related:** `docs/AlloQuant_output_file_manifest_v7r3` and the data dictionary are v7r3
+documents. Decide whether v7r4 gets its own versions or a note on the v7r3 ones. The master CSV
+schema is unchanged, so the dictionary needs only Item 6. The manifest lacks
+`landmark_refs_v7r4.csv` and the v7r4 filenames.
+
+
+## Item 8 — Module 2: `Spine_Bridge_Dist` enters state discovery with two definitions  ⏳ OPEN (found 2026-09-27)
+
+**Not documentation. It changes reported results at the state level.** Found while running
+Module 2 on a new AF3 condition set (Aur A ± TPX2 ± CEP192 ± pT ± ATP·Mg), where every GMM state
+was either all-apo or all-holo.
+
+**The defect.** Module 1 computes `Spine_Bridge_Dist` as the αC–β4 loop to the **ligand** when
+one is bound, and to the **k−3 (β3) residue** when none is. This is documented in S1 (row 35:
+"fallback for apo"), so the *metric* is disclosed correctly. The two branches measure different
+things on different scales (medians CDK1 3.91 vs 7.92 Å, CSK 4.15 vs 7.54, SRC 4.12 vs 7.72).
+`multimer_core_engine.R` (v7r1) blanks ligand columns in apo chains only when their names match
+`ATP|Mg` (line 304 on `main`), so `Spine_Bridge_Dist`:
+1. enters the PCA/GMM feature set (`universal_dist_cols`), which separates apo from holo chains
+   by construction;
+2. is tested across apo-vs-holo groups as one quantity. It ranks 1st–2nd in most published
+   CDK1 apo-vs-holo Phase 8 contrasts (p.adj ≈ 1e-33); that ranking comes from the definition,
+   not biology;
+3. enters per-state MAC wherever a state mixes apo and holo chains.
+
+**Evidence** (outside this repo; nothing here changed):
+- `../alloquant_spine_bridge_check_2026-09-27/NOTE_spine_bridge_published_runs.md`. All three
+  published Module 2 runs were reproduced exactly (state labels identical: CDK1 600/600, CSK
+  795/795, SRC 795/795), then repeated with the column dropped.
+- `../SRC/af3_output/260927_spine_bridge_masked_engine_test/README.md`. Engine copy with the
+  one-line mask fix, run on the deposited CSK–SRC 260718 data. Per-figure comparison in
+  `compare_report.txt`.
+- **2026-10-13** (Item 10): on the v7r4 master, the masked engine gives the same states as above (CSK
+  and SRC 795/795, outputs byte-identical), and the published engine gives the published states. So the
+  renamed states hold for v7r3 and v7r4 Module 1 output alike, and the renaming comes from this item
+  alone.
+
+| run | states pub → fixed | ARI | Cramér's V, state ~ apo/holo |
+|---|---|---|---|
+| CDK1 | 7 → 8 | 0.81 | 0.96 → 0.93 (the split is real conformation) |
+| CSK | 8 → 5 | 0.62 | 0.73 → 0.21 |
+| SRC | 7 → 5 | 0.58 | 0.93 → 0.38 |
+
+**Impact by manuscript element** (masked engine vs published):
+
+| element | effect |
+|---|---|
+| Fig 4A, pooled MAC per condition | holo conditions unchanged; apo conditions ≈ −0.007 (CSK apo/apo 0.134 → 0.127). "CSK rises on priming, SRC flat" unchanged |
+| Fig 4B, "pY419 flips SRC state" | **conclusion holds**: both-ATP and primed SRC still occupy disjoint state sets. Labels change; the main primed state (old S8) now shares a state with apo SRC |
+| Fig 4C, state handshake | **conclusion holds, stronger**: primed V 0.44 → 0.58 (p 4e-6 → 3e-16); unprimed n.s. (0.26 → 0.19). Axis labels change |
+| Fig 6 | the representative models and their SB distances are unchanged; only their state names change (CSK 3→5, 9→3, 5→4; SRC 8→4) |
+| Fig S7 (SRC State 4 vs 7/8) | **must be redone**: old S8 merges with apo SRC and old S4 splits, so the contrasts no longer exist as defined |
+| Suppl. Note 10 / Table 7 (per-state MAC) | recompute on the new states |
+| Fig 2C (CDK1 state composition) | light check: States 4/5/6/8 map 1:1, State 1 mostly; States 7 and 9 re-split |
+| Any text naming `Spine_Bridge` as an apo/holo discriminator | remove or qualify |
+
+**Not affected:** every Module 1 value and the S1 Dataset; within-condition analyses (the engine
+appends the physical ligand state to each condition, so no published condition mixes apo and
+holo chains, 0/7 for CSK and SRC), including the paired-coupling figure and per-condition MAC
+among holo conditions.
+
+**Fix: repo side.**
+1. Engine: add `Spine_Bridge` to the apo mask:
+   `ligand_cols <- grep("ATP|Mg|Spine_Bridge", all_numeric_cols, ignore.case = TRUE, value = TRUE)`.
+   Ship it as a **new** engine version so v7r1 stays byte-identical for the published outputs
+   (the same policy as v7r3/v7r4), and have the driver call it.
+2. Longer term, in a future Module 1 version: split the column into `Spine_Bridge_Ligand_Dist`
+   and `Spine_Bridge_B3_Dist` (a schema change: S1 Dataset and data dictionary).
+3. Regenerate `data/csk_src_dimer_260718/plots_and_stats_{CSK,SRC}_GMM` (and CDK1 if the paper
+   adopts the fixed engine everywhere) with the new engine, including Phase 8 for the new SRC
+   state pairs. **`data/MANIFEST_md5.txt` must then be rebuilt** (Item 3 applies: files under
+   `data/` change).
+4. Figure scripts hard-code state names and must be updated: `figures/fig4_model2.py`
+   (`src_states`, `SRC_ROWS`, `CSK_COLS`, the V values in the panel titles), `figures/compose_fig6.py`
+   (docstring state names), `figures/figS7_src_state_volcanos.py` (`PAIRS`).
+5. README: record the fix and the value statement (which outputs change and why) in the section
+   for the new engine version, next to Item 7.
+
+**Fix: manuscript side.**
+1. Methods (Module 2): state that ligand-dependent distances, including `Spine_Bridge_Dist`, are
+   excluded from state discovery when apo and holo chains are pooled.
+2. Replace Fig 4B/C (labels, V values, legend footnote), Fig S7, and Suppl. Note 10/Table 7 with
+   the re-run outputs; rename the states in Fig 6 and its legend; check Fig 2C States 7/9.
+3. Response to reviewers: disclose it as a correction found by the authors after submission. The
+   conclusions of Fig 4B/C are unchanged (4C strengthens); the state labels and the S7 contrasts
+   change.
+
+**Related, not fixed (decide at revision):** because the ATP/Mg columns are masked in apo chains,
+per-condition MAC is already computed on different column sets for apo and holo conditions (Fig
+4A compares them). Report that or equalise the feature set.
+
+## Item 9 — S1 Dataset: `HRD_ATP_Dist` measures one phosphate group, not "the ATP"  ⏳ OPEN (found 2026-10-01)
+
+**File:** same dictionary, the `HRD_ATP_Dist` row (cell `I47`); optionally `Substrate_Clearance_Angle` (`I43`).
+
+**It says (I47):** "Min distance from catalytic HRD-Asp (hrd+2) side-chain O*/N* to the ATP
+gamma/beta/alpha-phosphate group."
+
+**Why it is imprecise:** the code (`chimerax_hmm_worker_v7r3.py`, unchanged in v7r4) does not take
+the minimum over all three groups. It takes **one** group, the most terminal one present (γ if
+modelled, else β, else α), defined by fixed CCD atom names (`PG, O1G, O2G, O3G`, …), and reports the
+minimum distance to that group only. Read literally, "gamma/beta/alpha" suggests a minimum over all
+phosphates. With ATP the two readings usually coincide, because the γ group holds the atom closest
+to the Asp (CDK1–CCNB1 AF3 models: 3.94–4.16 Å, always a γ oxygen), but nothing guarantees it.
+Likewise, I43's "ATP-phosphate (phosphate atom as vertex)" is the **phosphorus of that same most
+terminal group** (γ-P for ATP).
+
+**Proposed wording (I47):** "Min distance from the catalytic HRD-Asp (hrd+2) side-chain O*/N* to the
+most terminal phosphate group of the bound nucleotide (γ if present, else β, else α; the phosphorus
+and its CCD-named oxygens). Requires a bound nucleotide; N/A on apo chains."
+**Optional (I43):** "…(vertex: the phosphorus of the most terminal phosphate group, γ-P for ATP)".
+
+**No reported number changes.** Every published dataset binds ATP·Mg (CDK1–CCNB1 260517, CSK–SRC
+260718, CSK monomer 260806; checked 2026-10-01 on up to 400 models per run), and 3D7T has
+staurosporine, so no published value depends on the wording or on the code issues below.
+
+**Related Module 1 code issues (not documentation; not fixed in v7r3/v7r4; published outputs
+unaffected).** Found on EGFR 2GS6 (`erbb_dimer_complex/BLOCKERS.md` B12.9):
+* **Thio-phosphates.** The fixed name lists omit the γ-sulfur `S1G` of ATP-γS (`AGS`, which *is* in
+  `LIGAND_NAMES`) and of other thio analogues, so for those ligands HRD_ATP_Dist can be non-minimal.
+  On a 30-chain Kincore-Active PDB set, 2 of 5 AGS chains change when S1G is included (5NZZ
+  6.54 → 4.63 Å, 8YHW 4.22 → 3.43); ATP and ANP rows are unaffected. The same lists feed
+  DFG_ATP_Dist and PLoop_ATP_Dist.
+* **Unlisted nucleotides.** Any ATP analogue outside the nine-code `LIGAND_NAMES` (e.g. 2GS6's
+  conjugate `112`) gets N/A for every nucleotide metric.
+* Both are drafted in the v7r5 testflight `tf1-7r5` (outside the repository; details in B12.9). The
+  intended v7r5 definition keeps "most terminal group" and adds any sulfur bonded to that group's
+  phosphorus. If v7r5 ships it, the I47 wording above should gain "(including thio substitutions)".
+* The acetamide linker of `112`, the analogue's closest atom to the Asp (4.81 Å), is deliberately
+  **not** phosphate and stays excluded under both definitions.
+
+## Item 10 — v7r4 rerun of CSK–SRC 260718, MD seed labels, AF3 provenance  ⏳ OPEN (added 2026-10-13)
+
+**Evidence, not a defect. No reported number changes.** Folder (outside this repo; nothing here changed):
+`../SRC/af3_output/261013_v7r4_module1_rerun_260718_csk-src/` (README there). The manuscript-side pointer is
+`manuscript_alloquant/plos_submission/updates/OPEN_ITEMS_for_revision.md`, 2026-10-13 entry.
+
+**1. v7r4 = v7r3 on the CSK–SRC set.**
+- Module 1 v7r4 (`baa76fe`, deployment copy `../alloquant_module1_v7r4/`, drift check clean), run on all 800
+  models of `260718_rerun_260606_v7_csk-src` (CIFs symlinked), passes the coverage check (1,600 chain rows).
+- The master is **identical to `data/csk_src_dimer_260718/master_kinase_analysis_results_v7r3.csv`** in all
+  48 columns (sorted byte-identical).
+- The v7r1 engine on it reproduces the published Phase 5/6/6b/7 outputs byte for byte (CSK 795/795, SRC 795/795).
+- This replaces the code-argument basis of Item 7's value statement for this dataset.
+
+**2. Item 8 alone renames the states.** The masked engine on the v7r4 master reproduces the 2026-09-27 masked
+states exactly (CSK 5, SRC 5 states).
+
+**3. MD seed labels.** The AlloQuant-MD / KAKENHI Stage 1 MD seeds (four primed models) are named in the **masked**
+labels (`md_seed_state_crosswalk.csv` in the folder above).
+- CSK "S5" is published **State 3** in every seed: SB formed, 2.76–3.09 Å.
+- SRC "S4" is published State 8 (seed-1217163_sample-2) or State 3 (seed-709596_sample-2); "S6" is State 7.
+- If MD results are cited at revision, give the published state, or name the label source.
+
+**4. AF3 provenance, to disclose if reviewers ask about reproducibility.** Evidence:
+`../SRC/af3_output/260806_CSK_40seeds_borealis_fullmsa/analysis_zst/COMPARISON_cell_vs_borealis_fullmsa.md` and
+`../SRC/af3_output/260813_csk_src_40seeds_cell/analysis_zst/COMPARISON_dimer_cell_vs_borealis.md`.
+- **MSA/template bug:** the MSA-recycling rerun path stripped templates from `260805_CSK_40seeds_borealis`
+  (invalid, never used). From 260806 on, borealis runs are full-MSA.
+  - The primary set 260718 re-used the June `260606` coordinates unchanged (not a rerun), so it is unaffected.
+  - Gap: only `model.cif` was kept for 260606, so its MSA/templates cannot be audited directly.
+- **Compute stack:** every manuscript dataset is borealis (RTX PRO 4000 Blackwell, weights bundle `2524e951`).
+  The cell replicate (2× A4000 Ampere, `33b70d79`) contributes no data. Hardware and bundle both differ.
+  - Across the two stacks, ensembles reproduce: the pY419 effect on CSK and the MAC tiers.
+  - Individual models do not: CSK Dihedral/State agrees in 62.6% (whole-basin swaps), SRC in 95.4%.
+  - The GMM decomposition does not transfer (CSK 8 vs 5 states).
+  - **Rule:** the ensemble is the reproducible unit, and a single model's state number is not.
+- **Controls still not run:**
+  - a within-run split-half refit of Phase 6, to separate GMM non-portability from resampling;
+  - driver/CUDA/docker digests for both servers.
+
+**Action at revision:**
+- Cite (1) as the direct check behind the v7r4 value statement (Item 7 README section).
+- Use (2) when presenting the Item 8 correction.
+- Keep (4) ready for the response. Run the split-half control if reviewers question state stability.
 
 ---
 
