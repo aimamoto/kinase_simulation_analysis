@@ -5,7 +5,9 @@
 (the `Type` definition) and Item 7 (`README.md` has no v7r4 section) added, both OPEN. 2026-09-27 —
 Item 8 (Module 2: `Spine_Bridge_Dist` in the state discovery) added, OPEN. 2026-10-01 — Item 9
 (`HRD_ATP_Dist`: which phosphate group, and thio-phosphates) added, OPEN; Item 7 brought up to date with
-the v7r4 commits of 2026-10-01.** **Item 8 is not
+the v7r4 commits of 2026-10-01. 2026-10-13 — Item 10 (full v7r4 rerun of the CSK–SRC 260718 set,
+the MD seed state crosswalk, AF3 MSA and compute-stack provenance) added; it confirms Item 7's value
+statement directly on CSK–SRC and shows that Item 8 alone renames the states.** **Item 8 is not
 documentation: it changes reported state-level results. Read it before the others.**
 
 > **Status as of 2026-09-18.** Items 1 and 2 have been applied to
@@ -29,7 +31,7 @@ revision, alongside the response to reviewers.
 
 ## Bottom line first
 
-**Items 1–7 and 9: no reported number changes, and nothing there is an erratum.** Each is a
+**Items 1–7, 9 and 10: no reported number changes, and nothing there is an erratum.** Items 1–7 and 9 are each a
 prose/description defect in documentation.
 
 **Item 8 is different.** It is a Module 2 analysis defect that changes the published CSK and SRC
@@ -208,6 +210,8 @@ copy and does **not** replace this one, although parts of it can be reused.
   The 2026-10-01 additions (4)–(6) change no value. Masters were byte-identical on 3D7T, the
   AURKA–TPX2 MD run (4379 frames), a CDK1–CCNB1 AF3 subset, and EGFR 2GS2 / 2GS6 / 3GOP. For
   non-AF3 runs the visible difference is that a master CSV is now written, and the run exits 0.
+  **2026-10-13, confirmed on the manuscript's own CSK–SRC set** (Item 10): v7r4 (`baa76fe`) on all
+  800 models of 260718 gives a master identical to the deposited v7r3 one (48 columns × 1,600 rows).
 * **New outputs:** `landmark_refs_v7r4.csv` (only when a chain used a `NAME_n` entry) and the
   printed variant table, whose substitution counts are lower bounds (`756e478`). The v7r4
   output filenames (`hmm_…_v7r4.csv`, `master_…_v7r4.csv`) belong in Outputs, Repository Layout
@@ -255,6 +259,10 @@ things on different scales (medians CDK1 3.91 vs 7.92 Å, CSK 4.15 vs 7.54, SRC 
 - `../SRC/af3_output/260927_spine_bridge_masked_engine_test/README.md`. Engine copy with the
   one-line mask fix, run on the deposited CSK–SRC 260718 data. Per-figure comparison in
   `compare_report.txt`.
+- **2026-10-13** (Item 10): on the v7r4 master, the masked engine gives the same states as above (CSK
+  and SRC 795/795, outputs byte-identical), and the published engine gives the published states. So the
+  renamed states hold for v7r3 and v7r4 Module 1 output alike, and the renaming comes from this item
+  alone.
 
 | run | states pub → fixed | ARI | Cramér's V, state ~ apo/holo |
 |---|---|---|---|
@@ -349,6 +357,51 @@ unaffected).** Found on EGFR 2GS6 (`erbb_dimer_complex/BLOCKERS.md` B12.9):
   phosphorus. If v7r5 ships it, the I47 wording above should gain "(including thio substitutions)".
 * The acetamide linker of `112`, the analogue's closest atom to the Asp (4.81 Å), is deliberately
   **not** phosphate and stays excluded under both definitions.
+
+## Item 10 — v7r4 rerun of CSK–SRC 260718, MD seed labels, AF3 provenance  ⏳ OPEN (added 2026-10-13)
+
+**Evidence, not a defect. No reported number changes.** Folder (outside this repo; nothing here changed):
+`../SRC/af3_output/261013_v7r4_module1_rerun_260718_csk-src/` (README there). The manuscript-side pointer is
+`manuscript_alloquant/plos_submission/updates/OPEN_ITEMS_for_revision.md`, 2026-10-13 entry.
+
+**1. v7r4 = v7r3 on the CSK–SRC set.**
+- Module 1 v7r4 (`baa76fe`, deployment copy `../alloquant_module1_v7r4/`, drift check clean), run on all 800
+  models of `260718_rerun_260606_v7_csk-src` (CIFs symlinked), passes the coverage check (1,600 chain rows).
+- The master is **identical to `data/csk_src_dimer_260718/master_kinase_analysis_results_v7r3.csv`** in all
+  48 columns (sorted byte-identical).
+- The v7r1 engine on it reproduces the published Phase 5/6/6b/7 outputs byte for byte (CSK 795/795, SRC 795/795).
+- This replaces the code-argument basis of Item 7's value statement for this dataset.
+
+**2. Item 8 alone renames the states.** The masked engine on the v7r4 master reproduces the 2026-09-27 masked
+states exactly (CSK 5, SRC 5 states).
+
+**3. MD seed labels.** The AlloQuant-MD / KAKENHI Stage 1 MD seeds (four primed models) are named in the **masked**
+labels (`md_seed_state_crosswalk.csv` in the folder above).
+- CSK "S5" is published **State 3** in every seed: SB formed, 2.76–3.09 Å.
+- SRC "S4" is published State 8 (seed-1217163_sample-2) or State 3 (seed-709596_sample-2); "S6" is State 7.
+- If MD results are cited at revision, give the published state, or name the label source.
+
+**4. AF3 provenance, to disclose if reviewers ask about reproducibility.** Evidence:
+`../SRC/af3_output/260806_CSK_40seeds_borealis_fullmsa/analysis_zst/COMPARISON_cell_vs_borealis_fullmsa.md` and
+`../SRC/af3_output/260813_csk_src_40seeds_cell/analysis_zst/COMPARISON_dimer_cell_vs_borealis.md`.
+- **MSA/template bug:** the MSA-recycling rerun path stripped templates from `260805_CSK_40seeds_borealis`
+  (invalid, never used). From 260806 on, borealis runs are full-MSA.
+  - The primary set 260718 re-used the June `260606` coordinates unchanged (not a rerun), so it is unaffected.
+  - Gap: only `model.cif` was kept for 260606, so its MSA/templates cannot be audited directly.
+- **Compute stack:** every manuscript dataset is borealis (RTX PRO 4000 Blackwell, weights bundle `2524e951`).
+  The cell replicate (2× A4000 Ampere, `33b70d79`) contributes no data. Hardware and bundle both differ.
+  - Across the two stacks, ensembles reproduce: the pY419 effect on CSK and the MAC tiers.
+  - Individual models do not: CSK Dihedral/State agrees in 62.6% (whole-basin swaps), SRC in 95.4%.
+  - The GMM decomposition does not transfer (CSK 8 vs 5 states).
+  - **Rule:** the ensemble is the reproducible unit, and a single model's state number is not.
+- **Controls still not run:**
+  - a within-run split-half refit of Phase 6, to separate GMM non-portability from resampling;
+  - driver/CUDA/docker digests for both servers.
+
+**Action at revision:**
+- Cite (1) as the direct check behind the v7r4 value statement (Item 7 README section).
+- Use (2) when presenting the Item 8 correction.
+- Keep (4) ready for the response. Run the split-half control if reviewers question state stability.
 
 ---
 
