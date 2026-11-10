@@ -88,6 +88,27 @@ from chimerax.core.commands import run
 # Prompted by a concordance check against Kincore-standalone2 (Dunbrack lab) on PDB 3D7T.
 # v7r2 outputs are NOT reproduced by v7r3; re-run any dataset before comparing across versions.
 #
+# 6. (2026-11-10) Non-amino-acid residues in a kinase chain no longer shift the landmarks.
+#    A landmark index addresses the list of residues extract_fasta.py put in the FASTA that
+#    hmmalign aligned, and that list is AMINO ACIDS ONLY (extract_fasta.extract_sequences keeps
+#    only residues in its AA_MAP). get_sequence_and_residues() here returned EVERY residue of the
+#    chain, so anything else in a kinase chain -- a terminal cap (ACE/NME), an in-chain ligand or
+#    ion -- shifted every landmark after it by one. AA_MAP here also lacked HSD/HSE/HSP/CYX/CYM/
+#    ASX/GLX, which extract_fasta.py counts, so those spellings were a second, independent source
+#    of the same shift. Fix: AA_MAP is now the same map extract_fasta.py uses, and
+#    get_sequence_and_residues() keeps only residues in it, so the two lists cannot diverge.
+#    NO REPORTED VALUE CHANGES on this repository's inputs. Non-amino-acid residues do share a
+#    kinase chain in some PDB entries (MG, ANP, AGS in the nucleotide refset), but a landmark index
+#    only addresses residues before it, and across 830 amino-acid-bearing chains of the CSK-SRC AF3
+#    set and the refset every one of them FOLLOWED the last amino acid of its chain (0 interleaved,
+#    0 leading; checked 2026-11-10). The bug is therefore latent here, and v7r3 (frozen for review)
+#    has the identical code at chimerax_hmm_worker_v7r3.py.
+#    It was ACTIVE for MD, where tleap writes ACE/NME: found by Wu-san on an Amber trajectory
+#    (2026-11-09) and demonstrated in alloquant-md, where one ACE on a CSK-SRC dimer put 24 of 47
+#    columns of the capped chain wrong (State BLAminus -> BBLtrans, R_Spine Intact -> Broken,
+#    C_Helix In -> Out, Spatial DFGin -> Outlier, D1 6.26 -> 13.26 A). Fixed there as Module 1
+#    v8r2 (md_trajectory_toolkit, module1/README.md). See docs/TODO_at_revision.md Item 11.
+#
 # 1. D1_Dist anchor corrected (AFFECTS Spatial + State).
 #    Modi & Dunbrack, PNAS 2019 (116:6818) define D1 = dist(aC-Glu(+4)-CA, DFG-Phe-CZ).
 #    v7r2 measured from the aC-Glu ITSELF, while still applying the published 11/14 A
@@ -115,11 +136,14 @@ VIZ_OUT_DIR_ALLO = "cx_viz_allosteric"
 FILE_EXTENSION = ".cif"
 LANDMARKS_JSON = "hmm_landmarks.json"
 
+# MUST stay identical to extract_fasta.py's AA_MAP: the FASTA the landmarks are built from
+# contains exactly these residues, so this map decides which residues a landmark index counts.
+# See item 6 of the v7r3 -> v7r4 update log above.
 AA_MAP = {
-    'ALA':'A', 'ARG':'R', 'ASN':'N', 'ASP':'D', 'CYS':'C', 'GLN':'Q', 'GLU':'E', 
-    'GLY':'G', 'HIS':'H', 'ILE':'I', 'LEU':'L', 'LYS':'K', 'MET':'M', 'PHE':'F', 
-    'PRO':'P', 'SER':'S', 'THR':'T', 'TRP':'W', 'TYR':'Y', 'VAL':'V',
-    'PTR':'Y', 'SEP':'S', 'TPO':'T', 'HIE':'H', 'HID':'H', 'HIP':'H', 'LYZ':'K'
+    'ALA':'A','ARG':'R','ASN':'N','ASP':'D','CYS':'C','GLN':'Q','GLU':'E','GLY':'G','HIS':'H','ILE':'I',
+    'LEU':'L','LYS':'K','MET':'M','PHE':'F','PRO':'P','SER':'S','THR':'T','TRP':'W','TYR':'Y','VAL':'V',
+    'HID':'H','HIE':'H','HIP':'H','HSD':'H','HSE':'H','HSP':'H','CYX':'C','CYM':'C','PTR':'Y','SEP':'S','TPO':'T',
+    'LYZ':'K','ASX':'D','GLX':'E'
 }
 LIGAND_NAMES = ["ATP", "ADP", "ANP", "ACP", "AGS", "AMP", "GTP", "GDP", "STU"]
 
@@ -270,8 +294,16 @@ def get_rotamer(chi1: float) -> str:
     else: return "minus"
 
 def get_sequence_and_residues(model: Any, chain_id: str) -> Tuple[str, Any]:
+    """The chain's amino acids, in file order, and their one-letter sequence.
+
+    Amino acids only, because that is what extract_fasta.py writes to the FASTA that hmmalign
+    aligns: a landmark index i must address element i of THIS list. Anything else in the chain
+    (a terminal ACE/NME cap, an in-chain ligand or ion, an UNK) is excluded -- counting it
+    shifts every landmark after it. See item 6 of the v7r3 -> v7r4 update log above.
+    """
     chain_res = model.residues[model.residues.chain_ids == chain_id]
-    seq_str = "".join([AA_MAP.get(rname, 'X') for rname in chain_res.names])
+    chain_res = chain_res[np.isin(np.array(chain_res.names), list(AA_MAP))]
+    seq_str = "".join([AA_MAP[rname] for rname in chain_res.names])
     return seq_str, chain_res
 
 def match_cofactor_to_fasta(chain_seq: str, fasta_seqs: Dict, expected_name: str = None) -> str:

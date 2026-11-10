@@ -403,6 +403,43 @@ labels (`md_seed_state_crosswalk.csv` in the folder above).
 - Use (2) when presenting the Item 8 correction.
 - Keep (4) ready for the response. Run the split-half control if reviewers question state stability.
 
+## Item 11 — landmark indices counted non-amino-acid residues  ✅ FIXED on `v7r4-bugfix` 2026-11-10
+
+**Latent in this repository; no reported number changes.** v7r3 is frozen for the PLOS Comp Biol review and
+is **not** touched.
+
+**The defect.** A landmark index addresses the list of residues `scripts/modules/extract_fasta.py` put in the
+FASTA that `hmmalign` aligned. `extract_sequences()` keeps only residues in its `AA_MAP`, so that list is
+**amino acids only**. `get_sequence_and_residues()` in `chimerax_hmm_worker_v7r3.py` (line 219) and
+`_v7r4.py` returned **every** residue of the chain, so any non-amino-acid residue inside a kinase chain — a
+terminal `ACE`/`NME` cap, an in-chain ligand or ion — shifted every landmark after it by one. The worker's
+`AA_MAP` also lacked `HSD/HSE/HSP/CYX/CYM/ASX/GLX`, which `extract_fasta.py` counts: a second, independent
+source of the same shift.
+
+**Why no number here changes — checked, not assumed.** Non-amino-acid residues *do* share a kinase chain in
+some inputs (`MG`, `ANP`, `AGS` in PDB entries of the nucleotide refset). What matters is **where** they sit: a
+landmark index only addresses residues before it, so a ligand written after the protein cannot shift anything.
+Across 830 amino-acid-bearing chains of the CSK–SRC AF3 set and the refset, **every** non-amino-acid residue
+followed the last amino acid of its chain — 0 interleaved, 0 leading (checked 2026-11-10). The failure needs a
+non-amino-acid residue *before* a landmark, which is what an N-terminal cap is and what mmCIF ligand ordering
+never produces. Nothing in `data/` or any submitted table is affected.
+
+**Where it was real.** MD, because `tleap` writes `ACE`/`NME` caps. Found by Wu-san on an Amber trajectory
+(2026-11-09) while rebuilding the measurement step on MDAnalysis, and reproduced in `alloquant-md`: one `ACE`
+on a CSK–SRC dimer put **24 of 47 columns of the capped chain wrong** — `State` `BLAminus` → `BBLtrans`,
+`R_Spine` `Intact` → `Broken`, `C_Helix` `In` → `Out`, `Spatial` `DFGin` → `Outlier`, `D1_Dist` 6.26 → 13.26 Å,
+`DFG_Mg_Dist` 1.91 → 6.07 Å. The uncapped partner chain was untouched.
+
+**The fix (item 6 of the v7r3 → v7r4 update log).** `AA_MAP` is now the same map `extract_fasta.py` uses, and
+`get_sequence_and_residues()` keeps only residues in it, so the two lists cannot diverge. Released in
+`alloquant-md` as Module 1 **v8r2** (`md_trajectory_toolkit/module1/README.md`), whose release tests reproduce
+the stored v8r1 masters cell for cell (48,632 cells, 0 differing), so v8r1 and v8r2 pool.
+
+**Action at revision:** no change to any reported value, so nothing is required of the response. Mention it
+only if a reviewer asks about residue indexing or about applying AlloQuant to simulations with capped termini.
+
+---
+
 ---
 
 ## Already fixed on 2026-09-02 — no action needed, listed for the record
